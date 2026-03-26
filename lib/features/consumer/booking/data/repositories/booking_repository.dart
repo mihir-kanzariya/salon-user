@@ -34,6 +34,7 @@ class BookingRepository {
     required String startTime,
     String? stylistMemberId,
     String? customerNotes,
+    String? promoCode,
   }) async {
     return await _api.post('${ApiConfig.bookings}/pay-and-book', body: {
       'salon_id': salonId,
@@ -43,6 +44,7 @@ class BookingRepository {
       if (stylistMemberId != null) 'stylist_member_id': stylistMemberId,
       'payment_mode': 'online',
       if (customerNotes != null) 'customer_notes': customerNotes,
+      if (promoCode != null) 'promo_code': promoCode,
     });
   }
   

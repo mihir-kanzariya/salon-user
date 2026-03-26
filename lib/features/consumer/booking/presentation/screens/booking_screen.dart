@@ -41,6 +41,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
   DateTime _selectedDate = DateTime.now();
   String? _selectedTime;
+  String? _selectedEndTime;
   String? _selectedStylistId; // null = Any Stylist
   String _selectedStylistName = 'Any Stylist';
   List<Map<String, dynamic>> _slots = [];

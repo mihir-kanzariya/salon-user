@@ -32,6 +32,7 @@ import 'features/salon/earnings/presentation/screens/withdrawal_screen.dart';
 import 'features/salon/earnings/presentation/screens/transactions_screen.dart';
 import 'features/salon/onboarding/presentation/screens/payment_setup_screen.dart';
 import 'features/consumer/payment/presentation/screens/payment_screen.dart';
+import 'features/consumer/checkout/presentation/screens/checkout_screen.dart';
 import 'features/consumer/favorites/presentation/screens/favorites_screen.dart';
 import 'features/consumer/search/presentation/screens/search_screen.dart';
 import 'features/consumer/profile/presentation/screens/edit_profile_screen.dart';
@@ -287,6 +288,21 @@ class SaloonApp extends StatelessWidget {
         return SlidePageRoute(child: PaymentSetupScreen(salonId: salonId));
 
       // Payment routes
+      case '/checkout':
+        final args = settings.arguments as Map<String, dynamic>?;
+        if (args == null) return _notFoundRoute();
+        return SlidePageRoute(child: CheckoutScreen(
+          salonId: args['salon_id'] ?? '',
+          salonName: args['salon_name'] ?? 'Salon',
+          services: List<Map<String, dynamic>>.from(args['services'] ?? []),
+          bookingDate: args['booking_date'] ?? '',
+          startTime: args['start_time'] ?? '',
+          endTime: args['end_time'],
+          stylistMemberId: args['stylist_member_id'],
+          stylistName: args['stylist_name'] ?? 'Any Stylist',
+          customerNotes: args['customer_notes'],
+          totalPrice: (args['total_price'] as num?)?.toDouble() ?? 0,
+        ));
       case '/payment':
         final args = settings.arguments as Map<String, dynamic>?;
         if (args == null) return _notFoundRoute();

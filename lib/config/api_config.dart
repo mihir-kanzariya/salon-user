@@ -3,7 +3,7 @@ class ApiConfig {
   // For mobile testing, use your laptop's WiFi IP
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.6.81:3000/api/v1',
+    defaultValue: 'https://apis.binaxytech.com/api/v1',
   );
 
   // Auth
@@ -36,6 +36,9 @@ class ApiConfig {
   // Payments
   static const String createPaymentOrder = '/payments/create-order';
   static const String verifyPayment = '/payments/verify';
+
+  // Promo
+  static const String validatePromo = '/promo-codes/validate';
 
   // Onboarding (Razorpay Route)
   static String linkedAccount(String salonId) => '/salons/$salonId/onboarding/linked-account';
