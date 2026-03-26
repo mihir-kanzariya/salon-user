@@ -104,7 +104,7 @@ class SaloonApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SalonProvider()),
       ],
       child: MaterialApp(
-        title: 'Saloon',
+        title: 'HeloHair',
         navigatorKey: navigatorKey,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
