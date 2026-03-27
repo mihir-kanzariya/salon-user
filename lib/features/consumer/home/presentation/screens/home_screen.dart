@@ -91,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Saloon', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+            const Text('HeloHair', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
             Text(_locationText, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400)),
           ],
         ),
