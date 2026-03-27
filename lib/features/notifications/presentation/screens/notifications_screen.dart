@@ -1,3 +1,5 @@
+import '../../../../core/i18n/locale_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
@@ -68,11 +70,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: Text(context.watch<LocaleProvider>().tr('notifications')),
         actions: [
           TextButton(
             onPressed: _markAllRead,
-            child: const Text('Mark all read', style: TextStyle(color: AppColors.white, fontSize: 13)),
+            child: Text(context.watch<LocaleProvider>().tr('mark_all_read'), style: TextStyle(color: AppColors.white, fontSize: 13)),
           ),
         ],
       ),

@@ -1,3 +1,5 @@
+import '../../../../../core/i18n/locale_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_text_styles.dart';
@@ -280,14 +282,14 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('My Bookings'),
+        title: Text(context.watch<LocaleProvider>().tr('my_bookings')),
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppColors.white,
           unselectedLabelColor: AppColors.white.withValues(alpha: 0.6),
           indicatorColor: AppColors.accent,
-          tabs: const [
-            Tab(text: 'Upcoming'),
+          tabs: [
+            Tab(text: context.watch<LocaleProvider>().tr('upcoming')),
             Tab(text: 'Completed'),
             Tab(text: 'Cancelled'),
           ],

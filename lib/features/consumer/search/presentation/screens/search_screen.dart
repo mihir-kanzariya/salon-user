@@ -1,3 +1,5 @@
+import '../../../../../core/i18n/locale_provider.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -138,7 +140,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
           autofocus: true,
           style: const TextStyle(fontSize: 16, color: AppColors.textPrimary),
           decoration: InputDecoration(
-            hintText: 'Search salons, stylists, services...',
+            hintText: context.watch<LocaleProvider>().tr('search_helohair'),
             hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 16),
             border: InputBorder.none,
             prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
@@ -207,8 +209,8 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
           indicatorColor: AppColors.primary,
           indicatorWeight: 3,
           tabs: [
-            Tab(text: 'Salons ($_salonCount)'),
-            Tab(text: 'Stylists ($_stylistCount)'),
+            Tab(text: '${context.watch<LocaleProvider>().tr("salons")} ($_salonCount)'),
+            Tab(text: '${context.watch<LocaleProvider>().tr("stylists")} ($_stylistCount)'),
           ],
         ),
       ),

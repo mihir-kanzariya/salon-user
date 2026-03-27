@@ -1,3 +1,5 @@
+import '../../../../../core/i18n/locale_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/widgets/loading_widget.dart';
@@ -74,7 +76,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Favorites'),
+        title: Text(context.watch<LocaleProvider>().tr('favorites')),
       ),
       body: _buildBody(),
     );

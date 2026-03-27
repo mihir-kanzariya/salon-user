@@ -1,3 +1,5 @@
+import '../../../../../core/i18n/locale_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../../config/api_config.dart';
@@ -12,7 +14,7 @@ class ConsumerProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(title: Text(context.watch<LocaleProvider>().tr('profile'))),
       body: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           final user = auth.user;
@@ -44,22 +46,22 @@ class ConsumerProfileScreen extends StatelessWidget {
               // Menu items
               _ProfileTile(
                 icon: Icons.person_outline,
-                title: 'Edit Profile',
+                title: context.watch<LocaleProvider>().tr('edit_profile'),
                 onTap: () => Navigator.pushNamed(context, '/edit-profile'),
               ),
               _ProfileTile(
                 icon: Icons.favorite_outline,
-                title: 'Favorite Salons',
+                title: context.watch<LocaleProvider>().tr('favorites'),
                 onTap: () => Navigator.pushNamed(context, '/favorites'),
               ),
               _ProfileTile(
                 icon: Icons.notifications_outlined,
-                title: 'Notifications',
+                title: context.watch<LocaleProvider>().tr('notifications'),
                 onTap: () => Navigator.pushNamed(context, '/notifications'),
               ),
               _ProfileTile(
                 icon: Icons.help_outline,
-                title: 'Help & Support',
+                title: context.watch<LocaleProvider>().tr('help_support'),
                 onTap: () {
                   showDialog(
                     context: context,
@@ -97,7 +99,7 @@ class ConsumerProfileScreen extends StatelessWidget {
               ),
               _ProfileTile(
                 icon: Icons.info_outline,
-                title: 'About',
+                title: context.watch<LocaleProvider>().tr('about_app'),
                 onTap: () {
                   showDialog(
                     context: context,
@@ -128,7 +130,7 @@ class ConsumerProfileScreen extends StatelessWidget {
               const SizedBox(height: 8),
               _ProfileTile(
                 icon: Icons.logout,
-                title: 'Logout',
+                title: context.watch<LocaleProvider>().tr('logout'),
                 titleColor: AppColors.error,
                 onTap: () async {
                   final confirmed = await showDialog<bool>(
