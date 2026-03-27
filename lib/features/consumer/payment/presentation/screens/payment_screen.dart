@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_text_styles.dart';
+import '../../../../../core/i18n/locale_provider.dart';
 import '../../../../../core/widgets/app_button.dart';
 import '../../../../../core/utils/snackbar_utils.dart';
 import '../../../../../core/utils/storage_service.dart';
@@ -204,7 +206,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
             const SizedBox(height: 20),
             Text(
-              wasCancelled ? 'Payment Cancelled' : 'Payment Failed',
+              wasCancelled ? context.read<LocaleProvider>().tr('payment_cancelled') : context.read<LocaleProvider>().tr('payment_failed'),
               style: AppTextStyles.h3,
               textAlign: TextAlign.center,
             ),
@@ -225,13 +227,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       Navigator.pop(ctx);
                       Navigator.pop(context, false);
                     },
-                    child: const Text('Go Back'),
+                    child: Text(context.read<LocaleProvider>().tr('go_back')),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: AppButton(
-                    text: 'Retry',
+                    text: context.read<LocaleProvider>().tr('retry'),
                     onPressed: () {
                       Navigator.pop(ctx);
                       _createOrderAndPay();
@@ -272,8 +274,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Payment Successful!',
+            Text(
+              context.read<LocaleProvider>().tr('payment_successful'),
               style: AppTextStyles.h3,
               textAlign: TextAlign.center,
             ),
@@ -337,7 +339,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
             const SizedBox(height: 16),
             AppButton(
-              text: 'View Booking',
+              text: context.read<LocaleProvider>().tr('view_booking'),
               onPressed: () {
                 Navigator.pop(ctx);
                 Navigator.pop(context, true);
@@ -356,7 +358,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Payment'),
+        title: Text(context.watch<LocaleProvider>().tr('payment')),
       ),
       body: Column(
         children: [
@@ -451,7 +453,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Service Amount',
+                context.watch<LocaleProvider>().tr('payment_amount'),
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -469,7 +471,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Payment Type',
+                context.watch<LocaleProvider>().tr('payment_type'),
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -487,8 +489,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
                 child: Text(
                   widget.paymentType == 'full'
-                      ? 'Full Payment'
-                      : 'Token Payment',
+                      ? context.watch<LocaleProvider>().tr('full_payment')
+                      : context.watch<LocaleProvider>().tr('token_payment'),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -508,7 +510,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Total Payable', style: AppTextStyles.h4),
+              Text(context.watch<LocaleProvider>().tr('total_payable'), style: AppTextStyles.h4),
               Text(
                 '\u20B9${widget.amount.toStringAsFixed(0)}',
                 style: AppTextStyles.h3.copyWith(color: AppColors.primary),
@@ -581,12 +583,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Secure Payment',
+                  context.watch<LocaleProvider>().tr('secure_payment'),
                   style: AppTextStyles.labelLarge.copyWith(fontSize: 13),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Powered by Razorpay. Your payment information is encrypted and secure.',
+                  context.watch<LocaleProvider>().tr('powered_by_razorpay'),
                   style: AppTextStyles.caption,
                 ),
               ],
@@ -598,13 +600,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildPayButton(bool isProcessing) {
+    final locale = context.watch<LocaleProvider>();
     String buttonText;
     if (_isCreatingOrder) {
-      buttonText = 'Creating Order...';
+      buttonText = locale.tr('loading');
     } else if (_isVerifying) {
-      buttonText = 'Verifying Payment...';
+      buttonText = locale.tr('loading');
     } else {
-      buttonText = 'Pay \u20B9${widget.amount.toStringAsFixed(0)}';
+      buttonText = '${locale.tr('pay_amount')} \u20B9${widget.amount.toStringAsFixed(0)}';
     }
 
     return Container(

@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_text_styles.dart';
+import '../../../../../core/i18n/locale_provider.dart';
 import '../../../../../core/widgets/app_button.dart';
 import '../../../../../core/utils/snackbar_utils.dart';
 import '../../../../../services/api_service.dart';
@@ -182,15 +184,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void _onPaymentError(PaymentFailureResponse response) {
     setState(() => _isProcessing = false);
     if (!mounted) return;
+    final locale = context.read<LocaleProvider>();
     showDialog(context: context, builder: (ctx) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text(response.code == 2 ? 'Payment Cancelled' : 'Payment Failed'),
+      title: Text(response.code == 2 ? locale.tr('payment_cancelled') : locale.tr('payment_failed')),
       content: Text(response.code == 2
-        ? 'Your slot is held for 10 minutes. You can retry.'
-        : 'Payment could not be completed. Please try again.'),
+        ? locale.tr('slot_held_msg')
+        : locale.tr('slot_held_msg')),
       actions: [
-        TextButton(onPressed: () { Navigator.pop(ctx); Navigator.pop(context); }, child: const Text('Go Back')),
-        ElevatedButton(onPressed: () { Navigator.pop(ctx); _proceedToPay(); }, child: const Text('Retry')),
+        TextButton(onPressed: () { Navigator.pop(ctx); Navigator.pop(context); }, child: Text(locale.tr('go_back'))),
+        ElevatedButton(onPressed: () { Navigator.pop(ctx); _proceedToPay(); }, child: Text(locale.tr('retry'))),
       ],
     ));
   }
@@ -201,7 +204,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Checkout')),
+      appBar: AppBar(title: Text(context.watch<LocaleProvider>().tr('checkout'))),
       body: Column(
         children: [
           Expanded(child: SingleChildScrollView(
@@ -229,7 +232,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(14)),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Services', style: AppTextStyles.h4),
+                  Text(context.watch<LocaleProvider>().tr('services'), style: AppTextStyles.h4),
                   const SizedBox(height: 12),
                   ...widget.services.map((s) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -247,7 +250,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(14)),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Promo Code', style: AppTextStyles.h4),
+                  Text(context.watch<LocaleProvider>().tr('promo_code'), style: AppTextStyles.h4),
                   const SizedBox(height: 12),
                   if (_appliedCode != null)
                     Container(
@@ -266,7 +269,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         controller: _promoController,
                         textCapitalization: TextCapitalization.characters,
                         decoration: InputDecoration(
-                          hintText: 'Enter promo code',
+                          hintText: context.watch<LocaleProvider>().tr('enter_promo'),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           errorText: _promoError,
@@ -276,7 +279,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ElevatedButton(
                         onPressed: _isApplyingPromo ? null : _applyPromo,
                         style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14)),
-                        child: _isApplyingPromo ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Apply'),
+                        child: _isApplyingPromo ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text(context.watch<LocaleProvider>().tr('apply')),
                       ),
                     ]),
                 ]),
@@ -289,19 +292,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(14)),
                 child: Column(children: [
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    const Text('Subtotal', style: AppTextStyles.bodyMedium),
+                    Text(context.watch<LocaleProvider>().tr('subtotal'), style: AppTextStyles.bodyMedium),
                     Text('\u20B9${_subtotal.toStringAsFixed(0)}', style: AppTextStyles.bodyMedium),
                   ]),
                   if (_discountAmount > 0) ...[
                     const SizedBox(height: 8),
                     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      const Text('Discount', style: TextStyle(color: AppColors.success)),
+                      Text(context.watch<LocaleProvider>().tr('discount'), style: const TextStyle(color: AppColors.success)),
                       Text('-\u20B9${_discountAmount.toStringAsFixed(0)}', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600)),
                     ]),
                   ],
                   const Divider(height: 24),
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    const Text('Total', style: AppTextStyles.h3),
+                    Text(context.watch<LocaleProvider>().tr('total'), style: AppTextStyles.h3),
                     Text('\u20B9${_total.toStringAsFixed(0)}', style: AppTextStyles.h3.copyWith(color: AppColors.primary)),
                   ]),
                 ]),
@@ -314,7 +317,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: AppColors.cardBackground, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, -2))]),
             child: SafeArea(top: false, child: AppButton(
-              text: _isProcessing ? 'Processing...' : 'Proceed to Pay \u20B9${_total.toStringAsFixed(0)}',
+              text: _isProcessing ? '${context.watch<LocaleProvider>().tr('loading')}' : '${context.watch<LocaleProvider>().tr('proceed_to_pay')} \u20B9${_total.toStringAsFixed(0)}',
               onPressed: _isProcessing ? null : _proceedToPay,
               isLoading: _isProcessing,
               icon: Icons.payment,

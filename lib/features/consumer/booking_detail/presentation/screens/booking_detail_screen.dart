@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_text_styles.dart';
+import '../../../../../core/i18n/locale_provider.dart';
 import '../../../../../core/widgets/loading_widget.dart';
 import '../../../../../core/widgets/skeletons/skeleton_layouts.dart';
 import '../../../../../core/widgets/app_button.dart';
@@ -92,20 +94,20 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     }
   }
 
-  String _statusDisplay(String status) {
+  String _statusDisplay(String status, LocaleProvider locale) {
     switch (status) {
       case 'confirmed':
-        return 'Confirmed';
+        return locale.tr('status_confirmed');
       case 'completed':
-        return 'Completed';
+        return locale.tr('status_completed');
       case 'cancelled':
-        return 'Cancelled';
+        return locale.tr('status_cancelled');
       case 'no_show':
-        return 'No Show';
+        return locale.tr('status_no_show');
       case 'in_progress':
-        return 'In Progress';
+        return locale.tr('status_in_progress');
       case 'pending':
-        return 'Pending';
+        return locale.tr('status_pending');
       default:
         return status.replaceAll('_', ' ').toUpperCase();
     }
@@ -217,8 +219,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Cancel Booking',
+        title: Text(
+          context.read<LocaleProvider>().tr('cancel_booking'),
           style: AppTextStyles.h4,
         ),
         content: Text(
@@ -302,7 +304,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Booking Details'),
+        title: Text(context.watch<LocaleProvider>().tr('booking')),
       ),
       body: _isLoading
           ? const BookingDetailSkeleton()
@@ -505,7 +507,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _statusDisplay(status),
+                  _statusDisplay(status, context.watch<LocaleProvider>()),
                   style: AppTextStyles.h4.copyWith(
                     color: _statusColor(status),
                   ),
@@ -669,7 +671,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Services', style: AppTextStyles.labelLarge),
+            Text(context.watch<LocaleProvider>().tr('services'), style: AppTextStyles.labelLarge),
             const SizedBox(height: 14),
             ...services.asMap().entries.map((entry) {
               final index = entry.key;
@@ -812,7 +814,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Payment', style: AppTextStyles.labelLarge),
+                Text(context.watch<LocaleProvider>().tr('payment'), style: AppTextStyles.labelLarge),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
@@ -820,7 +822,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    _capitalize(paymentStatus),
+                    _paymentStatusDisplay(paymentStatus),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -882,7 +884,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Subtotal', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+                  Text(context.watch<LocaleProvider>().tr('subtotal'), style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
                   Text('\u20B9${_formatPrice(subtotal)}', style: AppTextStyles.bodyMedium),
                 ],
               ),
@@ -892,7 +894,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Total Amount', style: AppTextStyles.labelLarge),
+                Text(context.watch<LocaleProvider>().tr('total'), style: AppTextStyles.labelLarge),
                 Text(
                   '\u20B9${_formatPrice(totalAmount)}',
                   style: AppTextStyles.h4.copyWith(color: AppColors.primary),
@@ -958,7 +960,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           );
         },
         icon: const Icon(Icons.chat_outlined, size: 18),
-        label: const Text('Message Salon'),
+        label: Text(context.watch<LocaleProvider>().tr('chat')),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.primary),
@@ -1013,13 +1015,13 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             ],
             if (showReview)
               AppButton(
-                text: 'Write Review',
+                text: context.watch<LocaleProvider>().tr('write_review'),
                 onPressed: _navigateToReview,
                 icon: Icons.rate_review_outlined,
               ),
             if (showRebook) ...[
               AppButton(
-                text: 'Book Again',
+                text: context.watch<LocaleProvider>().tr('book_now'),
                 onPressed: _rebookSameSalon,
                 icon: Icons.replay,
               ),
@@ -1027,7 +1029,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             ],
             if (showCancel)
               AppButton(
-                text: 'Cancel Booking',
+                text: context.watch<LocaleProvider>().tr('cancel_booking'),
                 onPressed: _isCancelling ? null : _confirmCancellation,
                 isLoading: _isCancelling,
                 isOutlined: true,
@@ -1090,7 +1092,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               Navigator.pop(ctx);
               _navigateToReview();
             },
-            child: Text('Write Review', style: AppTextStyles.labelLarge.copyWith(color: AppColors.primary)),
+            child: Text(context.read<LocaleProvider>().tr('write_review'), style: AppTextStyles.labelLarge.copyWith(color: AppColors.primary)),
           ),
         ],
       ),
@@ -1102,6 +1104,21 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       return price.toStringAsFixed(price.truncateToDouble() == price ? 0 : 2);
     }
     return price.toString();
+  }
+
+  String _paymentStatusDisplay(String status) {
+    final locale = context.read<LocaleProvider>();
+    switch (status.toLowerCase()) {
+      case 'paid':
+      case 'completed':
+        return locale.tr('paid');
+      case 'pending':
+        return locale.tr('unpaid');
+      case 'refunded':
+        return locale.tr('refunded');
+      default:
+        return _capitalize(status);
+    }
   }
 
   String _capitalize(String text) {

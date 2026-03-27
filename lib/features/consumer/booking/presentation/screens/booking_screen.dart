@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../../../../config/api_config.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_text_styles.dart';
+import '../../../../../core/i18n/locale_provider.dart';
 import '../../../../../core/widgets/app_button.dart';
 import '../../../../../core/widgets/loading_widget.dart';
 import '../../../../../core/utils/snackbar_utils.dart';
@@ -43,7 +45,7 @@ class _BookingScreenState extends State<BookingScreen> {
   String? _selectedTime;
   String? _selectedEndTime;
   String? _selectedStylistId; // null = Any Stylist
-  String _selectedStylistName = 'Any Stylist';
+  String? _selectedStylistName;
   List<Map<String, dynamic>> _slots = [];
   bool _isLoadingSlots = false;
   bool _isBooking = false;
@@ -202,7 +204,7 @@ class _BookingScreenState extends State<BookingScreen> {
         'salon_name': widget.salonName,
         'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
         'time': _selectedTime!,
-        'stylist_name': _selectedStylistName,
+        'stylist_name': _selectedStylistName ?? context.read<LocaleProvider>().tr('any_stylist'),
         'total_price': widget.totalPrice,
         'service_count': widget.serviceIds.length,
       });
@@ -221,22 +223,23 @@ class _BookingScreenState extends State<BookingScreen> {
     if (!mounted) return;
 
     final isCancelled = response.code == 2;
+    final locale = context.read<LocaleProvider>();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isCancelled ? 'Payment Cancelled' : 'Payment Failed'),
+        title: Text(isCancelled ? locale.tr('payment_cancelled') : locale.tr('payment_failed')),
         content: Text(isCancelled
-          ? 'You can retry the payment. Your slot is held for 10 minutes.'
-          : 'Payment could not be completed. Your slot is held for 10 minutes. Please try again.'),
+          ? locale.tr('slot_held_msg')
+          : locale.tr('slot_held_msg')),
         actions: [
           TextButton(
             onPressed: () { Navigator.pop(ctx); Navigator.pop(context); },
-            child: const Text('Cancel Booking'),
+            child: Text(locale.tr('cancel_booking')),
           ),
           ElevatedButton(
             onPressed: () { Navigator.pop(ctx); _confirmBooking(); },
-            child: const Text('Retry Payment'),
+            child: Text(locale.tr('retry')),
           ),
         ],
       ),
@@ -271,7 +274,7 @@ class _BookingScreenState extends State<BookingScreen> {
             color: AppColors.white,
             child: Row(
               children: [
-                _StepDot(label: 'Stylist', isActive: true, isCompleted: _selectedStylistId != null || _selectedStylistName == 'Any Stylist'),
+                _StepDot(label: context.watch<LocaleProvider>().tr('stylists'), isActive: true, isCompleted: _selectedStylistId != null || _selectedStylistName == null),
                 Expanded(child: Container(height: 2, color: _selectedTime != null ? AppColors.primary : AppColors.border)),
                 _StepDot(label: 'Date', isActive: true, isCompleted: true),
                 Expanded(child: Container(height: 2, color: _selectedTime != null ? AppColors.primary : AppColors.border)),
@@ -325,7 +328,7 @@ class _BookingScreenState extends State<BookingScreen> {
           children: [
             Icon(Icons.person_outline, size: 20, color: AppColors.textPrimary),
             const SizedBox(width: 8),
-            const Text('Select Stylist', style: AppTextStyles.h4),
+            Text(context.watch<LocaleProvider>().tr('select_stylist'), style: AppTextStyles.h4),
           ],
         ),
         const SizedBox(height: 12),
@@ -371,7 +374,7 @@ class _BookingScreenState extends State<BookingScreen> {
         HapticFeedback.selectionClick();
         setState(() {
           _selectedStylistId = id;
-          _selectedStylistName = isAny ? 'Any Stylist' : name;
+          _selectedStylistName = isAny ? null : name;
         });
         _loadSlots();
       },
@@ -445,7 +448,7 @@ class _BookingScreenState extends State<BookingScreen> {
             Icon(Icons.calendar_today_outlined,
                 size: 20, color: AppColors.textPrimary),
             const SizedBox(width: 8),
-            const Text('Select Date', style: AppTextStyles.h4),
+            Text(context.watch<LocaleProvider>().tr('select_date'), style: AppTextStyles.h4),
           ],
         ),
         const SizedBox(height: 12),
@@ -532,7 +535,7 @@ class _BookingScreenState extends State<BookingScreen> {
             Icon(Icons.access_time_outlined,
                 size: 20, color: AppColors.textPrimary),
             const SizedBox(width: 8),
-            const Text('Select Time', style: AppTextStyles.h4),
+            Text(context.watch<LocaleProvider>().tr('select_time'), style: AppTextStyles.h4),
           ],
         ),
         const SizedBox(height: 12),
@@ -551,8 +554,8 @@ class _BookingScreenState extends State<BookingScreen> {
                 children: [
                   Icon(Icons.event_busy_outlined, size: 40, color: AppColors.textMuted),
                   const SizedBox(height: 8),
-                  const Text(
-                    'No slots available for this date',
+                  Text(
+                    context.watch<LocaleProvider>().tr('no_slots_available'),
                     style: AppTextStyles.bodySmall,
                   ),
                   const SizedBox(height: 4),
@@ -575,18 +578,19 @@ class _BookingScreenState extends State<BookingScreen> {
     final afternoon = _filterSlots(12, 17);
     final evening = _filterSlots(17, 23);
 
+    final locale = context.watch<LocaleProvider>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (morning.isNotEmpty) _buildSlotGroup('Morning', morning),
+        if (morning.isNotEmpty) _buildSlotGroup(locale.tr('morning'), morning),
         if (afternoon.isNotEmpty) ...[
           if (morning.isNotEmpty) const SizedBox(height: 16),
-          _buildSlotGroup('Afternoon', afternoon),
+          _buildSlotGroup(locale.tr('afternoon'), afternoon),
         ],
         if (evening.isNotEmpty) ...[
           if (morning.isNotEmpty || afternoon.isNotEmpty)
             const SizedBox(height: 16),
-          _buildSlotGroup('Evening', evening),
+          _buildSlotGroup(locale.tr('evening'), evening),
         ],
       ],
     );
@@ -671,8 +675,8 @@ class _BookingScreenState extends State<BookingScreen> {
               Icon(Icons.note_alt_outlined,
                   size: 20, color: AppColors.textPrimary),
               const SizedBox(width: 8),
-              const Expanded(
-                child: Text('Notes (Optional)', style: AppTextStyles.h4),
+              Expanded(
+                child: Text(context.watch<LocaleProvider>().tr('customer_notes'), style: AppTextStyles.h4),
               ),
               Icon(
                 _notesExpanded
@@ -691,7 +695,7 @@ class _BookingScreenState extends State<BookingScreen> {
             maxLines: 3,
             style: const TextStyle(fontSize: 13),
             decoration: InputDecoration(
-              hintText: 'Any special requests...',
+              hintText: context.watch<LocaleProvider>().tr('notes_hint'),
               hintStyle: TextStyle(
                 fontSize: 13,
                 color: AppColors.textMuted,
@@ -754,7 +758,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _selectedStylistName,
+                      _selectedStylistName ?? context.watch<LocaleProvider>().tr('any_stylist'),
                       style: AppTextStyles.caption,
                     ),
                     Text(
@@ -765,7 +769,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 ),
               ),
               AppButton(
-                text: 'Pay & Book \u20B9${widget.totalPrice.toStringAsFixed(0)}',
+                text: '${context.watch<LocaleProvider>().tr('pay_and_book')} \u20B9${widget.totalPrice.toStringAsFixed(0)}',
                 onPressed: _confirmBooking,
                 isLoading: _isBooking,
                 icon: Icons.payment,

@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_text_styles.dart';
+import '../../../../../core/i18n/locale_provider.dart';
 import '../../../../../core/widgets/app_button.dart';
 import '../../../../../core/widgets/app_text_field.dart';
 import '../../../../../core/utils/snackbar_utils.dart';
@@ -132,7 +133,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Edit Profile'),
+        title: Text(context.watch<LocaleProvider>().tr('edit_profile')),
       ),
       body: Form(
         key: _formKey,
@@ -327,7 +328,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Text('Gender', style: AppTextStyles.h4),
+                      Text(context.watch<LocaleProvider>().tr('gender'), style: AppTextStyles.h4),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -340,7 +341,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
             // Save button
             AppButton(
-              text: 'Save Changes',
+              text: context.watch<LocaleProvider>().tr('save'),
               isLoading: _isSaving,
               onPressed: _isSaving ? null : _saveProfile,
               icon: Icons.check,
@@ -353,18 +354,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildGenderChips() {
-    final genders = ['Male', 'Female', 'Other'];
+    final locale = context.watch<LocaleProvider>();
+    final genderKeys = ['male', 'female', 'other'];
     final genderIcons = {
-      'Male': Icons.male,
-      'Female': Icons.female,
-      'Other': Icons.transgender,
+      'male': Icons.male,
+      'female': Icons.female,
+      'other': Icons.transgender,
     };
 
     return Wrap(
       spacing: 10,
       runSpacing: 8,
-      children: genders.map((gender) {
-        final value = gender.toLowerCase();
+      children: genderKeys.map((genderKey) {
+        final value = genderKey;
         final isSelected = _selectedGender == value;
 
         return ChoiceChip(
@@ -372,12 +374,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                genderIcons[gender],
+                genderIcons[genderKey],
                 size: 18,
                 color: isSelected ? AppColors.white : AppColors.textSecondary,
               ),
               const SizedBox(width: 6),
-              Text(gender),
+              Text(locale.tr(genderKey)),
             ],
           ),
           selected: isSelected,

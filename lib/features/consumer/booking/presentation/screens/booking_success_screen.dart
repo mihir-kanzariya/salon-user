@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_text_styles.dart';
+import '../../../../../core/i18n/locale_provider.dart';
 import '../../../../../core/utils/time_utils.dart';
 
 class BookingSuccessScreen extends StatefulWidget {
@@ -97,7 +99,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Single
                 const SizedBox(height: 24),
                 FadeTransition(
                   opacity: _textFadeAnimation,
-                  child: const Text('Booking Confirmed!', style: AppTextStyles.h2),
+                  child: Text(context.watch<LocaleProvider>().tr('booking_confirmed'), style: AppTextStyles.h2),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -137,7 +139,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Single
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Total', style: AppTextStyles.h4),
+                          Text(context.watch<LocaleProvider>().tr('total'), style: AppTextStyles.h4),
                           Text(
                             '\u20B9${widget.totalPrice.toStringAsFixed(0)}',
                             style: AppTextStyles.h3.copyWith(color: AppColors.primary),
@@ -164,7 +166,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Single
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 0,
                     ),
-                    child: const Text('View Booking Details', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                    child: Text(context.watch<LocaleProvider>().tr('view_booking'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -173,7 +175,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Single
                   child: OutlinedButton.icon(
                     onPressed: _addToCalendar,
                     icon: const Icon(Icons.calendar_month, size: 18),
-                    label: const Text('Add to Calendar', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                    label: Text(context.watch<LocaleProvider>().tr('add_to_calendar'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
                       side: const BorderSide(color: AppColors.primary),
@@ -195,7 +197,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Single
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Back to Home', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                    child: Text(context.watch<LocaleProvider>().tr('back_to_home'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                   ),
                 ),
               ],

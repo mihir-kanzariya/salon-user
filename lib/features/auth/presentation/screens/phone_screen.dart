@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
+import '../../../../core/i18n/locale_provider.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../providers/auth_provider.dart';

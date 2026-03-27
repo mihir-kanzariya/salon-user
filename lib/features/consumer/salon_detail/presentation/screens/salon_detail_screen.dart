@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../../config/api_config.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_text_styles.dart';
+import '../../../../../core/i18n/locale_provider.dart';
 import '../../../../../core/widgets/app_button.dart';
 import '../../../../../core/widgets/loading_widget.dart';
 import '../../../../../core/widgets/empty_state_widget.dart';
@@ -154,13 +156,14 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
     if (_isLoading) return const Scaffold(body: SalonDetailSkeleton());
     // D.3: Enhanced error state with retry button
     if (_error.isNotEmpty || _salon == null) {
+      final locale = context.watch<LocaleProvider>();
       return Scaffold(
-        appBar: AppBar(title: const Text('Salon')),
+        appBar: AppBar(title: Text(locale.tr('salons'))),
         body: EmptyStateWidget(
           icon: Icons.error_outline,
-          title: 'Something went wrong',
-          subtitle: _error.isNotEmpty ? _error : 'Salon not found',
-          actionText: 'Retry',
+          title: locale.tr('error_occurred'),
+          subtitle: _error.isNotEmpty ? _error : locale.tr('not_found'),
+          actionText: locale.tr('retry'),
           onAction: _loadSalon,
         ),
       );
@@ -224,7 +227,7 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            salon.isCurrentlyOpen ? 'Open' : 'Closed',
+                            salon.isCurrentlyOpen ? context.watch<LocaleProvider>().tr('open_now') : context.watch<LocaleProvider>().tr('closed'),
                             style: TextStyle(
                               color: salon.isCurrentlyOpen
                                   ? AppColors.success
@@ -304,10 +307,10 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
                   indicatorWeight: 2.5,
                   labelStyle: AppTextStyles.labelLarge,
                   unselectedLabelStyle: AppTextStyles.labelMedium,
-                  tabs: const [
-                    Tab(text: 'Services'),
-                    Tab(text: 'About'),
-                    Tab(text: 'Reviews'),
+                  tabs: [
+                    Tab(text: context.watch<LocaleProvider>().tr('services')),
+                    Tab(text: context.watch<LocaleProvider>().tr('about')),
+                    Tab(text: context.watch<LocaleProvider>().tr('reviews')),
                   ],
                 ),
               ),
@@ -359,7 +362,7 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
                     const SizedBox(width: 16),
                     Expanded(
                       child: AppButton(
-                        text: 'Book Now',
+                        text: context.watch<LocaleProvider>().tr('book_now'),
                         onPressed: () {
                           Navigator.pushNamed(context, '/booking', arguments: {
                             'salon_id': salon.id,
@@ -539,14 +542,14 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
         children: [
           // About section
           if (salon.description != null && salon.description!.isNotEmpty) ...[
-            _buildSectionHeader(Icons.info_outline, 'About'),
+            _buildSectionHeader(Icons.info_outline, context.watch<LocaleProvider>().tr('about')),
             const SizedBox(height: 8),
             Text(salon.description!, style: AppTextStyles.bodyMedium),
             const SizedBox(height: 20),
           ],
 
           // Operating Hours
-          _buildSectionHeader(Icons.schedule_outlined, 'Operating Hours'),
+          _buildSectionHeader(Icons.schedule_outlined, context.watch<LocaleProvider>().tr('operating_hours')),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
@@ -581,8 +584,8 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
                               '$openTime - $closeTime',
                               style: AppTextStyles.bodySmall,
                             )
-                          : const Text(
-                              'Closed',
+                          : Text(
+                              context.watch<LocaleProvider>().tr('closed'),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
@@ -599,7 +602,7 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
 
           // Amenities
           if (salon.amenities.isNotEmpty) ...[
-            _buildSectionHeader(Icons.check_circle_outline, 'Amenities'),
+            _buildSectionHeader(Icons.check_circle_outline, context.watch<LocaleProvider>().tr('amenities')),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -621,7 +624,7 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
 
           // Gallery
           if (salon.gallery.isNotEmpty) ...[
-            _buildSectionHeader(Icons.photo_library_outlined, 'Gallery'),
+            _buildSectionHeader(Icons.photo_library_outlined, context.watch<LocaleProvider>().tr('gallery')),
             const SizedBox(height: 8),
             SizedBox(
               height: 120,
@@ -652,7 +655,7 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
 
           // Our Stylists
           if (stylists.isNotEmpty) ...[
-            _buildSectionHeader(Icons.people_outline, 'Our Stylists'),
+            _buildSectionHeader(Icons.people_outline, context.watch<LocaleProvider>().tr('our_stylists')),
             const SizedBox(height: 8),
             SizedBox(
               height: 100,
