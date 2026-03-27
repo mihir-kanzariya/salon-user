@@ -317,7 +317,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: AppColors.cardBackground, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, -2))]),
             child: SafeArea(top: false, child: AppButton(
-              text: _isProcessing ? '${context.watch<LocaleProvider>().tr('loading')}' : '${context.watch<LocaleProvider>().tr('proceed_to_pay')} \u20B9${_total.toStringAsFixed(0)}',
+              text: _isProcessing ? context.watch<LocaleProvider>().tr('loading') : '${context.watch<LocaleProvider>().tr('proceed_to_pay')} \u20B9${_total.toStringAsFixed(0)}',
               onPressed: _isProcessing ? null : _proceedToPay,
               isLoading: _isProcessing,
               icon: Icons.payment,

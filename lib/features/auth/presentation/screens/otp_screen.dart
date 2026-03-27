@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_text_styles.dart';
+import '../../../../core/i18n/locale_provider.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 import '../providers/auth_provider.dart';
@@ -114,7 +115,7 @@ class _OtpScreenState extends State<OtpScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Verify OTP', style: AppTextStyles.h2),
+              Text(context.watch<LocaleProvider>().tr('verify_otp'), style: AppTextStyles.h2),
               const SizedBox(height: 8),
               Text(
                 'Enter the $_otpLen-digit code sent to +91 $phone',
@@ -162,7 +163,7 @@ class _OtpScreenState extends State<OtpScreen> {
               Consumer<AuthProvider>(
                 builder: (context, auth, _) {
                   return AppButton(
-                    text: 'Verify',
+                    text: context.watch<LocaleProvider>().tr('verify_otp'),
                     onPressed: _verifyOtp,
                     isLoading: auth.state == AuthState.loading,
                   );
@@ -172,7 +173,7 @@ class _OtpScreenState extends State<OtpScreen> {
               Center(
                 child: TextButton(
                   onPressed: _resendOtp,
-                  child: const Text('Resend OTP'),
+                  child: Text(context.watch<LocaleProvider>().tr('resend_otp')),
                 ),
               ),
             ],

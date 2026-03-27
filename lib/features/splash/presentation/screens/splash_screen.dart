@@ -72,17 +72,7 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Center(
-                child: Image.asset('assets/images/helohair-logo.png', width: 70, height: 70, fit: BoxFit.contain),
-              ),
-            ),
+            Image.asset('assets/images/helohair-logo.png', width: 150, height: 150, fit: BoxFit.contain),
             const SizedBox(height: 24),
             Text(
               'HeloHair',

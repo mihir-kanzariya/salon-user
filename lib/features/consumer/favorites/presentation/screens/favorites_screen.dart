@@ -98,10 +98,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     }
 
     if (_favorites.isEmpty) {
-      return const EmptyStateWidget(
+      return EmptyStateWidget(
         icon: Icons.favorite_border,
-        title: 'No favorites yet',
-        subtitle: 'Save salons you love for quick access',
+        title: context.watch<LocaleProvider>().tr('no_favorites'),
+        subtitle: context.watch<LocaleProvider>().tr('no_favorites'),
       );
     }
 

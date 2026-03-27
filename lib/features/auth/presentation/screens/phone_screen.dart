@@ -111,7 +111,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                 const Text('Saloon', style: AppTextStyles.h1),
                 const SizedBox(height: 8),
                 Text(
-                  'Enter your mobile number to continue',
+                  context.watch<LocaleProvider>().tr('enter_phone'),
                   style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 32),
@@ -151,7 +151,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                 Consumer<AuthProvider>(
                   builder: (context, auth, _) {
                     return AppButton(
-                      text: 'Send OTP',
+                      text: context.watch<LocaleProvider>().tr('send_otp'),
                       onPressed: _sendOtp,
                       isLoading: auth.state == AuthState.loading && !_quickLogging,
                     );

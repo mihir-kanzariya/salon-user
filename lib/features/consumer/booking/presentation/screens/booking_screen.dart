@@ -341,7 +341,7 @@ class _BookingScreenState extends State<BookingScreen> {
               if (index == 0) {
                 return _buildStylistItem(
                   id: null,
-                  name: 'Any',
+                  name: context.watch<LocaleProvider>().tr('any_stylist'),
                   photoUrl: null,
                   isAny: true,
                 );

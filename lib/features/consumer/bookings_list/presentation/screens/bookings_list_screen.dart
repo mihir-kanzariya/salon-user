@@ -220,7 +220,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
                       const SizedBox(width: 4),
                       Text(
                         booking.paymentStatus == 'paid'
-                            ? (booking.paymentMode == 'pay_at_salon' ? 'Cash' : 'Online')
+                            ? (booking.paymentMode == 'pay_at_salon' ? 'કેશ' : 'Online')
                             : 'Unpaid',
                         style: AppTextStyles.caption.copyWith(
                           color: booking.paymentStatus == 'paid' ? AppColors.success : AppColors.accent,
@@ -290,8 +290,8 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
           indicatorColor: AppColors.accent,
           tabs: [
             Tab(text: context.watch<LocaleProvider>().tr('upcoming')),
-            Tab(text: 'Completed'),
-            Tab(text: 'Cancelled'),
+            Tab(text: context.watch<LocaleProvider>().tr('status_completed')),
+            Tab(text: context.watch<LocaleProvider>().tr('status_cancelled')),
           ],
         ),
       ),
