@@ -1,3 +1,4 @@
+import '../../../../../core/widgets/language_toggle.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -95,6 +96,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
+          const LanguageToggle(),
+          const SizedBox(width: 4),
           IconButton(
             icon: Stack(
               clipBehavior: Clip.none,
