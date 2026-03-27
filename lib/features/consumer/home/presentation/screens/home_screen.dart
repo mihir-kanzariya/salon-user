@@ -1,3 +1,5 @@
+import 'package:provider/provider.dart';
+import '../../../../../core/i18n/locale_provider.dart';
 import '../../../../../core/widgets/language_toggle.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -91,8 +93,8 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('HeloHair', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-            Text(_locationText, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400)),
+            Builder(builder: (ctx) { final l = ctx.watch<LocaleProvider>(); return Text(l.tr('app_name'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)); }),
+            Builder(builder: (ctx) { final l = ctx.watch<LocaleProvider>(); return Text(l.tr('nearby_salons'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400)); }),
           ],
         ),
         actions: [

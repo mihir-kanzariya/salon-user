@@ -1,4 +1,6 @@
 import 'package:provider/provider.dart';
+import '../../core/i18n/locale_provider.dart';
+import 'package:provider/provider.dart';
 import '../../core/widgets/language_toggle.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
