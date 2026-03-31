@@ -10,14 +10,16 @@ import '../../../../core/utils/snackbar_utils.dart';
 import '../providers/auth_provider.dart';
 import '../../../salon/providers/salon_provider.dart';
 
-/// Test accounts — always visible for now (testing phase).
-const _devMode = true;
+/// Test accounts — only visible in debug builds.
+final _devMode = kDebugMode;
 
 const _testAccounts = [
-  {'phone': '9999999001', 'name': 'Arjun Mehta', 'role': 'Salon Owner', 'salon': 'Urban Edge Salon', 'icon': Icons.store},
-  {'phone': '9999999002', 'name': 'Priya Sharma', 'role': 'Salon Owner', 'salon': 'Glamour Studio', 'icon': Icons.store},
+  {'phone': '7777700003', 'name': 'Amit Kumar', 'role': 'Customer', 'salon': '', 'icon': Icons.person},
+  {'phone': '7777700004', 'name': 'Priya Joshi', 'role': 'Customer', 'salon': '', 'icon': Icons.person},
   {'phone': '9999999003', 'name': 'Rahul Verma', 'role': 'Customer', 'salon': '', 'icon': Icons.person},
   {'phone': '9999999004', 'name': 'Sneha Patel', 'role': 'Customer', 'salon': '', 'icon': Icons.person},
+  {'phone': '9999999001', 'name': 'Arjun Mehta', 'role': 'Salon Owner', 'salon': 'Urban Edge Salon', 'icon': Icons.store},
+  {'phone': '9999999002', 'name': 'Priya Sharma', 'role': 'Salon Owner', 'salon': 'Glamour Studio', 'icon': Icons.store},
   {'phone': '9999999005', 'name': 'Vikram Singh', 'role': 'Stylist', 'salon': 'Urban Edge Salon', 'icon': Icons.content_cut},
   {'phone': '9999999006', 'name': 'Anita Desai', 'role': 'Stylist', 'salon': 'Glamour Studio', 'icon': Icons.content_cut},
 ];
