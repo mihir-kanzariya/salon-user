@@ -81,7 +81,10 @@ class SalonModel {
     final now = DateTime.now();
     final dayName = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][now.weekday - 1];
     final dayHours = operatingHours[dayName];
-    if (dayHours == null || dayHours['is_open'] != true) return false;
+    if (dayHours == null) return false;
+    // Support both is_open:true and is_closed:false formats
+    final isClosed = dayHours['is_closed'] == true || dayHours['is_open'] == false;
+    if (isClosed) return false;
     final openTime = dayHours['open'] as String? ?? '09:00';
     final closeTime = dayHours['close'] as String? ?? '21:00';
     final nowMinutes = now.hour * 60 + now.minute;
