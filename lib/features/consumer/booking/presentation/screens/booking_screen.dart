@@ -712,6 +712,25 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
           ),
         ),
+        // Nudge 5: Scarcity — "Only X discounted slots left today"
+        Builder(builder: (context) {
+          final smartCount = _smartSlots.where((s) =>
+              s['slotType'] != 'regular' && s['available'] == true).length;
+          if (smartCount > 0 && smartCount <= 5) {
+            return Padding(
+              padding: const EdgeInsets.only(left: 24, top: 3),
+              child: Text(
+                'Only $smartCount discounted slot${smartCount == 1 ? '' : 's'} left today',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFFD97706), // amber-600
+                ),
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        }),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
@@ -778,20 +797,11 @@ class _BookingScreenState extends State<BookingScreen> {
                       ],
                     ),
                     const SizedBox(height: 3),
-                    // Price with discount
-                    if (discount > 0)
+                    // Nudge 2: Anchoring — strikethrough original + bold discount + Save badge
+                    if (discount > 0) ...[
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            '\u20B9${finalPrice.toStringAsFixed(0)}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: borderColor,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
                           Text(
                             '\u20B9${widget.totalPrice.toStringAsFixed(0)}',
                             style: TextStyle(
@@ -800,18 +810,75 @@ class _BookingScreenState extends State<BookingScreen> {
                               decoration: TextDecoration.lineThrough,
                             ),
                           ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '\u20B9${finalPrice.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: borderColor,
+                            ),
+                          ),
                         ],
                       ),
-                    // Label
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1),
+                        child: Text(
+                          'Save \u20B9${discount.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF16A34A), // green-600
+                          ),
+                        ),
+                      ),
+                    ],
+                    // Nudge 4: Social proof — badge based on slot reason/type
                     if (isPerfectFit)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
-                          locale.tr('perfect_fit'),
+                          '\u2726 Perfect fit!',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                             color: borderColor,
+                          ),
+                        ),
+                      )
+                    else if (reason == 'first_available')
+                      const Padding(
+                        padding: EdgeInsets.only(top: 2),
+                        child: Text(
+                          '\uD83D\uDD25 Popular',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFEA580C), // orange-600
+                          ),
+                        ),
+                      )
+                    else if (reason == 'right_after_booking')
+                      const Padding(
+                        padding: EdgeInsets.only(top: 2),
+                        child: Text(
+                          'Quick fill',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF0D9488),
+                          ),
+                        ),
+                      )
+                    else if (reason == 'right_before_booking')
+                      const Padding(
+                        padding: EdgeInsets.only(top: 2),
+                        child: Text(
+                          'Last gap',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF7C3AED), // violet-600
                           ),
                         ),
                       )
@@ -910,6 +977,7 @@ class _BookingScreenState extends State<BookingScreen> {
     final isSpecial = isSmart || isPerfectFit;
     final discount = (slot['discount'] as num?)?.toDouble() ?? 0;
     final finalPrice = (slot['finalPrice'] as num?)?.toDouble() ?? widget.totalPrice;
+    final reason = slot['reason'] as String? ?? '';
 
     // Nudge 3: Loss aversion for regular slots near smart slots
     final double? extraCost = (!isSpecial && available) ? _lossAversionExtra(time) : null;
@@ -986,21 +1054,13 @@ class _BookingScreenState extends State<BookingScreen> {
                 ),
               ],
             ),
-            if (isSpecial && discount > 0 && available)
+            // Nudge 2: Anchoring — strikethrough original + bold discount + Save badge
+            if (isSpecial && discount > 0 && available) ...[
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '\u20B9${finalPrice.toStringAsFixed(0)}',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: isPerfectFit ? const Color(0xFFF59E0B) : const Color(0xFF0D9488),
-                      ),
-                    ),
-                    const SizedBox(width: 3),
                     Text(
                       '\u20B9${widget.totalPrice.toStringAsFixed(0)}',
                       style: TextStyle(
@@ -1009,9 +1069,80 @@ class _BookingScreenState extends State<BookingScreen> {
                         decoration: TextDecoration.lineThrough,
                       ),
                     ),
+                    const SizedBox(width: 3),
+                    Text(
+                      '\u20B9${finalPrice.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: isPerfectFit ? const Color(0xFFF59E0B) : const Color(0xFF0D9488),
+                      ),
+                    ),
                   ],
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.only(top: 1),
+                child: Text(
+                  'Save \u20B9${discount.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF16A34A), // green-600
+                  ),
+                ),
+              ),
+            ],
+            // Nudge 4: Social proof — badge based on slot reason/type
+            if (isSpecial && available)
+              if (isPerfectFit)
+                const Padding(
+                  padding: EdgeInsets.only(top: 1),
+                  child: Text(
+                    '\u2726 Perfect fit!',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFF59E0B),
+                    ),
+                  ),
+                )
+              else if (reason == 'first_available')
+                const Padding(
+                  padding: EdgeInsets.only(top: 1),
+                  child: Text(
+                    '\uD83D\uDD25 Popular',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFEA580C),
+                    ),
+                  ),
+                )
+              else if (reason == 'right_after_booking')
+                const Padding(
+                  padding: EdgeInsets.only(top: 1),
+                  child: Text(
+                    'Quick fill',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF0D9488),
+                    ),
+                  ),
+                )
+              else if (reason == 'right_before_booking')
+                const Padding(
+                  padding: EdgeInsets.only(top: 1),
+                  child: Text(
+                    'Last gap',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF7C3AED),
+                    ),
+                  ),
+                ),
             // Nudge 3: Loss aversion hint on regular slots near smart slots
             if (extraCost != null)
               Padding(
