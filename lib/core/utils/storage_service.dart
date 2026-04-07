@@ -56,6 +56,30 @@ class StorageService {
     return _prefs.getString(AppConstants.appModeKey) ?? 'consumer';
   }
   
+  // Onboarding
+  bool isOnboardingComplete() {
+    return _prefs.getBool('onboarding_complete') ?? false;
+  }
+
+  Future<void> setOnboardingComplete() async {
+    await _prefs.setBool('onboarding_complete', true);
+  }
+
+  // Location
+  Future<void> saveLocation(double lat, double lng, String cityName) async {
+    await _prefs.setDouble('user_lat', lat);
+    await _prefs.setDouble('user_lng', lng);
+    await _prefs.setString('user_city', cityName);
+  }
+
+  Map<String, dynamic>? getLocation() {
+    final lat = _prefs.getDouble('user_lat');
+    final lng = _prefs.getDouble('user_lng');
+    final city = _prefs.getString('user_city');
+    if (lat == null || lng == null) return null;
+    return {'lat': lat, 'lng': lng, 'city': city ?? ''};
+  }
+
   Future<void> clearAll() async {
     await _secureStorage.deleteAll();
     await _prefs.clear();

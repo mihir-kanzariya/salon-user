@@ -1,5 +1,4 @@
 import '../../../../../core/i18n/locale_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../../config/api_config.dart';
@@ -60,70 +59,35 @@ class ConsumerProfileScreen extends StatelessWidget {
                 onTap: () => Navigator.pushNamed(context, '/notifications'),
               ),
               _ProfileTile(
+                icon: Icons.settings_outlined,
+                title: context.watch<LocaleProvider>().tr('settings'),
+                onTap: () => Navigator.pushNamed(context, '/settings'),
+              ),
+              _ProfileTile(
                 icon: Icons.help_outline,
                 title: context.watch<LocaleProvider>().tr('help_support'),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      title: const Text('Help & Support'),
-                      content: const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Need help? Contact us:'),
-                          SizedBox(height: 12),
-                          Row(children: [
-                            Icon(Icons.email_outlined, size: 18, color: AppColors.textSecondary),
-                            SizedBox(width: 8),
-                            Text('support@saloon.app'),
-                          ]),
-                          SizedBox(height: 8),
-                          Row(children: [
-                            Icon(Icons.phone_outlined, size: 18, color: AppColors.textSecondary),
-                            SizedBox(width: 8),
-                            Text('+91 1800-000-0000'),
-                          ]),
-                        ],
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Close'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                onTap: () => Navigator.pushNamed(context, '/help'),
               ),
               _ProfileTile(
                 icon: Icons.info_outline,
                 title: context.watch<LocaleProvider>().tr('about_app'),
                 onTap: () {
-                  showDialog(
+                  showAboutDialog(
                     context: context,
-                    builder: (ctx) => AlertDialog(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      title: const Text('About Saloon'),
-                      content: const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Saloon - Salon Booking App', style: TextStyle(fontWeight: FontWeight.w600)),
-                          SizedBox(height: 8),
-                          Text('Version 1.0.0'),
-                          SizedBox(height: 8),
-                          Text('Book your favorite salons, discover new styles, and manage your beauty appointments with ease.'),
-                        ],
+                    applicationName: 'HeloHair',
+                    applicationVersion: '1.0.0',
+                    applicationIcon: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Close'),
-                        ),
-                      ],
+                      child: const Icon(Icons.content_cut, color: AppColors.white, size: 24),
                     ),
+                    children: [
+                      const Text('Book your favorite salons, discover new styles, and manage your beauty appointments with ease.'),
+                    ],
                   );
                 },
               ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
+import '../../../../core/utils/storage_service.dart';
 import '../../../../services/supabase_chat_service.dart';
 import '../../../../services/notification_service.dart';
 import '../../../../services/deep_link_service.dart';
@@ -33,15 +34,29 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
+    final storage = StorageService();
+
+    // Check onboarding first
+    if (!storage.isOnboardingComplete()) {
+      Navigator.pushReplacementNamed(context, '/onboarding');
+      return;
+    }
+
     final auth = context.read<AuthProvider>();
     await auth.checkAuthStatus();
-    
+
     if (!mounted) return;
-    
+
     switch (auth.state) {
       case AuthState.authenticated:
         // Initialize notifications after successful auth — await to ensure FCM token is saved
         await NotificationService().init();
+
+        // Check if location is set
+        if (storage.getLocation() == null) {
+          Navigator.pushReplacementNamed(context, '/location');
+          return;
+        }
 
         final role = auth.user?.role ?? 'customer';
         if (role == 'salon_user') {

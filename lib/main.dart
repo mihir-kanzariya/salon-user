@@ -13,6 +13,8 @@ import 'features/auth/presentation/screens/phone_screen.dart';
 import 'features/auth/presentation/screens/otp_screen.dart';
 import 'features/auth/presentation/screens/profile_setup_screen.dart';
 import 'features/splash/presentation/screens/splash_screen.dart';
+import 'features/onboarding/presentation/screens/onboarding_screen.dart';
+import 'features/location/presentation/screens/location_screen.dart';
 import 'features/consumer/salon_detail/presentation/screens/salon_detail_screen.dart';
 import 'features/consumer/booking/presentation/screens/booking_screen.dart';
 import 'features/notifications/presentation/screens/notifications_screen.dart';
@@ -37,6 +39,9 @@ import 'features/consumer/checkout/presentation/screens/checkout_screen.dart';
 import 'features/consumer/favorites/presentation/screens/favorites_screen.dart';
 import 'features/consumer/search/presentation/screens/search_screen.dart';
 import 'features/consumer/profile/presentation/screens/edit_profile_screen.dart';
+import 'features/consumer/receipt/presentation/screens/receipt_screen.dart';
+import 'features/consumer/settings/presentation/screens/settings_screen.dart';
+import 'features/consumer/settings/presentation/screens/help_screen.dart';
 import 'features/salon/profile/presentation/screens/operating_hours_screen.dart';
 import 'features/salon/profile/presentation/screens/gallery_screen.dart';
 import 'features/salon/profile/presentation/screens/amenities_screen.dart';
@@ -124,6 +129,10 @@ class SaloonApp extends StatelessWidget {
       // Common routes
       case '/':
         return MaterialPageRoute(builder: (_) => const SplashScreen());
+      case '/onboarding':
+        return SlidePageRoute(child: const OnboardingScreen());
+      case '/location':
+        return SlidePageRoute(child: const LocationScreen());
       case '/phone':
         return SlidePageRoute(child: const PhoneScreen());
       case '/otp':
@@ -203,6 +212,29 @@ class SaloonApp extends StatelessWidget {
         return SlidePageRoute(child: const SearchScreen());
       case '/edit-profile':
         return SlidePageRoute(child: const EditProfileScreen());
+      case '/receipt':
+        final args = settings.arguments as Map<String, dynamic>?;
+        if (args == null) return _notFoundRoute();
+        return SlidePageRoute(
+          child: ReceiptScreen(
+            bookingNumber: args['booking_number'] ?? '',
+            salonName: args['salon_name'] ?? '',
+            date: args['date'] ?? '',
+            time: args['time'] ?? '',
+            stylistName: args['stylist_name'] ?? '',
+            services: List<Map<String, dynamic>>.from(args['services'] ?? []),
+            totalAmount: (args['total_amount'] as num?)?.toDouble() ?? 0,
+            paymentMethod: args['payment_method'] ?? '',
+            paymentId: args['payment_id'] ?? '',
+            paidOn: args['paid_on'] ?? '',
+            discountAmount: (args['discount_amount'] as num?)?.toDouble() ?? 0,
+            smartDiscount: (args['smart_discount'] as num?)?.toDouble() ?? 0,
+          ),
+        );
+      case '/settings':
+        return SlidePageRoute(child: const SettingsScreen());
+      case '/help':
+        return SlidePageRoute(child: const HelpScreen());
 
       // Salon owner routes
       case '/salon-home':
