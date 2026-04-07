@@ -54,6 +54,7 @@ class _BookingScreenState extends State<BookingScreen> {
   final _notesController = TextEditingController();
   bool _notesExpanded = false;
   int _advanceBookingDays = 15;
+  final Set<String> _expandedGroups = {};
 
   @override
   void initState() {
@@ -120,6 +121,11 @@ class _BookingScreenState extends State<BookingScreen> {
         );
         _smartSlots = [];
         _slotSummary = {};
+      }
+
+      // Nudge 1: Pre-select the best smart slot
+      if (_smartSlots.isNotEmpty) {
+        _selectedTime = _smartSlots.first['time'] as String?;
       }
 
       setState(() {
@@ -632,6 +638,30 @@ class _BookingScreenState extends State<BookingScreen> {
         if (_smartSlots.isNotEmpty) ...[
           _buildBestTimesSection(locale),
           if (hasTimeGroups) const SizedBox(height: 20),
+        ] else if (_slots.isNotEmpty) ...[
+          // No smart slots means open day — show friendly message
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D9488).withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, size: 16, color: Color(0xFF0D9488)),
+                const SizedBox(width: 8),
+                Text(
+                  'All times available at regular price',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: const Color(0xFF0D9488),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (hasTimeGroups) const SizedBox(height: 20),
         ],
         if (earlyMorning.isNotEmpty) _buildSlotGroup(locale.tr('early_morning'), earlyMorning),
         if (morning.isNotEmpty) ...[
@@ -670,6 +700,17 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 2),
+        Padding(
+          padding: const EdgeInsets.only(left: 24),
+          child: Text(
+            'Most customers pick these times',
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ),
         const SizedBox(height: 10),
         Wrap(
@@ -798,6 +839,10 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Widget _buildSlotGroup(String label, List<Map<String, dynamic>> slots) {
+    final isExpanded = _expandedGroups.contains(label);
+    final showCollapse = slots.length > 3;
+    final visibleSlots = showCollapse && !isExpanded ? slots.take(3).toList() : slots;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -806,10 +851,53 @@ class _BookingScreenState extends State<BookingScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: slots.map((slot) => _buildSlotChip(slot)).toList(),
+          children: visibleSlots.map((slot) => _buildSlotChip(slot)).toList(),
         ),
+        if (showCollapse && !isExpanded)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _expandedGroups.add(label);
+                });
+              },
+              child: Text(
+                'Show all (${slots.length})',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
       ],
     );
+  }
+
+  /// Check if a regular slot is within 30 min of any smart slot
+  double? _lossAversionExtra(String time) {
+    if (_smartSlots.isEmpty) return null;
+    final parts = time.split(':');
+    final slotMin = (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
+
+    double? bestSmartPrice;
+    for (final smart in _smartSlots) {
+      final sTime = smart['time'] as String;
+      final sParts = sTime.split(':');
+      final sMin = (int.tryParse(sParts[0]) ?? 0) * 60 + (int.tryParse(sParts[1]) ?? 0);
+      if ((slotMin - sMin).abs() <= 30) {
+        final fp = (smart['finalPrice'] as num?)?.toDouble() ?? widget.totalPrice;
+        if (bestSmartPrice == null || fp < bestSmartPrice) {
+          bestSmartPrice = fp;
+        }
+      }
+    }
+    if (bestSmartPrice != null && bestSmartPrice < widget.totalPrice) {
+      return widget.totalPrice - bestSmartPrice;
+    }
+    return null;
   }
 
   Widget _buildSlotChip(Map<String, dynamic> slot) {
@@ -822,6 +910,9 @@ class _BookingScreenState extends State<BookingScreen> {
     final isSpecial = isSmart || isPerfectFit;
     final discount = (slot['discount'] as num?)?.toDouble() ?? 0;
     final finalPrice = (slot['finalPrice'] as num?)?.toDouble() ?? widget.totalPrice;
+
+    // Nudge 3: Loss aversion for regular slots near smart slots
+    final double? extraCost = (!isSpecial && available) ? _lossAversionExtra(time) : null;
 
     Color borderColor;
     Color bgColor;
@@ -919,6 +1010,19 @@ class _BookingScreenState extends State<BookingScreen> {
                       ),
                     ),
                   ],
+                ),
+              ),
+            // Nudge 3: Loss aversion hint on regular slots near smart slots
+            if (extraCost != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  '+\u20B9${extraCost.toStringAsFixed(0)} more',
+                  style: const TextStyle(
+                    fontSize: 9,
+                    color: Color(0xFFD97706), // amber-600
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
           ],
