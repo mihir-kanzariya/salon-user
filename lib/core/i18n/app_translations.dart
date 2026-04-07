@@ -102,6 +102,7 @@ class AppTranslations {
     'any_stylist': 'Any Stylist',
     'select_date': 'Select Date',
     'select_time': 'Select Time',
+    'early_morning': 'Early Morning',
     'morning': 'Morning',
     'afternoon': 'Afternoon',
     'evening': 'Evening',
@@ -120,6 +121,18 @@ class AppTranslations {
     'slot_held_msg': 'Your slot is held for 10 minutes.',
     'slot_expired': 'Your slot has expired. Please book again.',
     'no_bookings': 'No bookings yet',
+
+    // === Smart Slots ===
+    'best_times': 'Best Times \u2014 Save up to 10%',
+    'smart_slot': 'Smart Slot',
+    'perfect_fit': 'Perfect Fit!',
+    'save_amount': 'Save \u20B9{amount}',
+    'first_available': 'First available',
+    'right_after_booking': 'Right after a booking',
+    'right_before_booking': 'Right before a booking',
+    'fills_gap': 'Fills gap perfectly',
+    'last_slot': 'Last slot of the day',
+    'smart_discount': 'Smart Slot Saving',
 
     // === Booking Status ===
     'status_awaiting_payment': 'Awaiting Payment',
@@ -376,6 +389,7 @@ class AppTranslations {
     'any_stylist': 'કોઈ પણ સ્ટાઇલિસ્ટ',
     'select_date': 'ડેટ સિલેક્ટ',
     'select_time': 'ટાઇમ સિલેક્ટ',
+    'early_morning': 'અર્લી મોર્નિંગ',
     'morning': 'મોર્નિંગ',
     'afternoon': 'આફ્ટરનૂન',
     'evening': 'ઇવનિંગ',
@@ -394,6 +408,18 @@ class AppTranslations {
     'slot_held_msg': 'તમારો સ્લોટ 10 મિનિટ માટે હોલ્ડ છે.',
     'slot_expired': 'તમારો સ્લોટ એક્સપાયર થયો. ફરી બુક કરો.',
     'no_bookings': 'કોઈ બુકિંગ નથી',
+
+    // === Smart Slots ===
+    'best_times': 'બેસ્ટ ટાઇમ \u2014 10% સુધી બચાવો',
+    'smart_slot': 'સ્માર્ટ સ્લોટ',
+    'perfect_fit': 'પરફેક્ટ ફિટ!',
+    'save_amount': '\u20B9{amount} બચાવો',
+    'first_available': 'ફર્સ્ટ અવેલેબલ',
+    'right_after_booking': 'બુકિંગ પછી તરત',
+    'right_before_booking': 'બુકિંગ પહેલાં તરત',
+    'fills_gap': 'ગેપ પરફેક્ટલી ભરે છે',
+    'last_slot': 'દિવસનો છેલ્લો સ્લોટ',
+    'smart_discount': 'સ્માર્ટ સ્લોટ બચત',
 
     // === Booking Status ===
     'status_awaiting_payment': 'પેમેન્ટ પેન્ડિંગ',

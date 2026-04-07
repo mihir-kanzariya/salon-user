@@ -22,6 +22,8 @@ class CheckoutScreen extends StatefulWidget {
   final String stylistName;
   final String? customerNotes;
   final double totalPrice;
+  final double smartDiscount;
+  final String? slotType;
 
   const CheckoutScreen({
     super.key,
@@ -35,6 +37,8 @@ class CheckoutScreen extends StatefulWidget {
     required this.stylistName,
     this.customerNotes,
     required this.totalPrice,
+    this.smartDiscount = 0,
+    this.slotType,
   });
 
   @override
@@ -55,7 +59,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String? _promoCodeId;
 
   double get _subtotal => widget.totalPrice;
-  double get _total => (_subtotal - _discountAmount).clamp(0, double.infinity);
+  double get _effectiveSmartDiscount =>
+      (_appliedCode == null && widget.smartDiscount > 0) ? widget.smartDiscount : 0;
+  double get _total =>
+      (_subtotal - _discountAmount - _effectiveSmartDiscount).clamp(0, double.infinity);
 
   @override
   void initState() {
@@ -116,6 +123,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         stylistMemberId: widget.stylistMemberId,
         customerNotes: widget.customerNotes,
         promoCode: _appliedCode,
+        slotType: widget.slotType,
       );
 
       if (!mounted) return;
@@ -300,6 +308,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                       Text(context.watch<LocaleProvider>().tr('discount'), style: const TextStyle(color: AppColors.success)),
                       Text('-\u20B9${_discountAmount.toStringAsFixed(0)}', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600)),
+                    ]),
+                  ],
+                  if (_effectiveSmartDiscount > 0) ...[
+                    const SizedBox(height: 8),
+                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                      Row(children: [
+                        const Icon(Icons.bolt, size: 16, color: AppColors.success),
+                        const SizedBox(width: 4),
+                        Text(context.watch<LocaleProvider>().tr('smart_slot_saving'), style: const TextStyle(color: AppColors.success)),
+                      ]),
+                      Text('-\u20B9${_effectiveSmartDiscount.toStringAsFixed(0)}', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600)),
                     ]),
                   ],
                   const Divider(height: 24),

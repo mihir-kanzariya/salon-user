@@ -35,6 +35,7 @@ class BookingRepository {
     String? stylistMemberId,
     String? customerNotes,
     String? promoCode,
+    String? slotType,
   }) async {
     return await _api.post('${ApiConfig.bookings}/pay-and-book', body: {
       'salon_id': salonId,
@@ -45,6 +46,7 @@ class BookingRepository {
       'payment_mode': 'online',
       if (customerNotes != null) 'customer_notes': customerNotes,
       if (promoCode != null) 'promo_code': promoCode,
+      if (slotType != null) 'slot_type': slotType,
     });
   }
   
@@ -59,13 +61,33 @@ class BookingRepository {
       'duration': duration.toString(),
     };
     if (stylistMemberId != null) params['stylist_member_id'] = stylistMemberId;
-    
+
     final response = await _api.get(
       '${ApiConfig.bookings}/salon/$salonId/slots',
       queryParams: params,
       auth: false,
     );
     return List<Map<String, dynamic>>.from(response['data'] ?? []);
+  }
+
+  Future<Map<String, dynamic>> getSmartSlots({
+    required String salonId,
+    required String date,
+    required int duration,
+    required double price,
+    String? stylistMemberId,
+  }) async {
+    final params = {
+      'date': date,
+      'duration': duration.toString(),
+      'price': price.toString(),
+      if (stylistMemberId != null) 'stylist_member_id': stylistMemberId,
+    };
+    final res = await _api.get(
+      '${ApiConfig.bookings}/salon/$salonId/smart-slots',
+      queryParams: params,
+    );
+    return res['data'] ?? {};
   }
   
   Future<List<BookingModel>> getMyBookings({String? status, int page = 1}) async {

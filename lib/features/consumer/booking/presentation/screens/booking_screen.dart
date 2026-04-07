@@ -47,6 +47,8 @@ class _BookingScreenState extends State<BookingScreen> {
   String? _selectedStylistId; // null = Any Stylist
   String? _selectedStylistName;
   List<Map<String, dynamic>> _slots = [];
+  List<Map<String, dynamic>> _smartSlots = [];
+  Map<String, dynamic> _slotSummary = {};
   bool _isLoadingSlots = false;
   bool _isBooking = false;
   final _notesController = TextEditingController();
@@ -86,13 +88,40 @@ class _BookingScreenState extends State<BookingScreen> {
       setState(() {
         _isLoadingSlots = true;
         _selectedTime = null;
+        _smartSlots = [];
+        _slotSummary = {};
       });
-      _slots = await _repo.getAvailableSlots(
-        salonId: widget.salonId,
-        date: DateFormat('yyyy-MM-dd').format(_selectedDate),
-        duration: widget.totalDuration,
-        stylistMemberId: _selectedStylistId,
-      );
+
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+      // Try smart-slots API first; fall back to regular slots on failure
+      try {
+        final smartData = await _repo.getSmartSlots(
+          salonId: widget.salonId,
+          date: dateStr,
+          duration: widget.totalDuration,
+          price: widget.totalPrice,
+          stylistMemberId: _selectedStylistId,
+        );
+        final allSlots = List<Map<String, dynamic>>.from(smartData['slots'] ?? []);
+        _smartSlots = allSlots
+            .where((s) =>
+                s['slotType'] == 'smart' || s['slotType'] == 'perfect_fit')
+            .toList();
+        _slotSummary = Map<String, dynamic>.from(smartData['summary'] ?? {});
+        _slots = allSlots;
+      } catch (_) {
+        // Fallback to regular slots API
+        _slots = await _repo.getAvailableSlots(
+          salonId: widget.salonId,
+          date: dateStr,
+          duration: widget.totalDuration,
+          stylistMemberId: _selectedStylistId,
+        );
+        _smartSlots = [];
+        _slotSummary = {};
+      }
+
       setState(() {
         _isLoadingSlots = false;
       });
@@ -136,6 +165,7 @@ class _BookingScreenState extends State<BookingScreen> {
         startTime: _selectedTime!,
         stylistMemberId: _selectedStylistId,
         customerNotes: _notesController.text.isNotEmpty ? _notesController.text : null,
+        slotType: _selectedSlotType(),
       );
 
       if (!mounted) return;
@@ -255,6 +285,16 @@ class _BookingScreenState extends State<BookingScreen> {
       final hour = int.tryParse((slot['time'] as String).split(':')[0]) ?? 0;
       return hour >= fromHour && hour < toHour;
     }).toList();
+  }
+
+  /// Returns the slot type for the currently selected time, or null.
+  String? _selectedSlotType() {
+    if (_selectedTime == null) return null;
+    final match = _slots.where((s) => s['time'] == _selectedTime);
+    if (match.isEmpty) return null;
+    final type = match.first['slotType'];
+    if (type == 'smart' || type == 'perfect_fit') return type as String;
+    return null;
   }
 
   @override
@@ -574,17 +614,32 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Widget _buildGroupedSlots() {
+    final earlyMorning = _filterSlots(0, 6);
     final morning = _filterSlots(6, 12);
     final afternoon = _filterSlots(12, 17);
-    final evening = _filterSlots(17, 23);
+    final evening = _filterSlots(17, 24);
 
     final locale = context.watch<LocaleProvider>();
+    final hasTimeGroups = earlyMorning.isNotEmpty ||
+        morning.isNotEmpty ||
+        afternoon.isNotEmpty ||
+        evening.isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (morning.isNotEmpty) _buildSlotGroup(locale.tr('morning'), morning),
+        // Best Times section (smart / perfect_fit slots)
+        if (_smartSlots.isNotEmpty) ...[
+          _buildBestTimesSection(locale),
+          if (hasTimeGroups) const SizedBox(height: 20),
+        ],
+        if (earlyMorning.isNotEmpty) _buildSlotGroup(locale.tr('early_morning'), earlyMorning),
+        if (morning.isNotEmpty) ...[
+          if (earlyMorning.isNotEmpty) const SizedBox(height: 16),
+          _buildSlotGroup(locale.tr('morning'), morning),
+        ],
         if (afternoon.isNotEmpty) ...[
-          if (morning.isNotEmpty) const SizedBox(height: 16),
+          if (morning.isNotEmpty || earlyMorning.isNotEmpty) const SizedBox(height: 16),
           _buildSlotGroup(locale.tr('afternoon'), afternoon),
         ],
         if (evening.isNotEmpty) ...[
@@ -592,6 +647,152 @@ class _BookingScreenState extends State<BookingScreen> {
             const SizedBox(height: 16),
           _buildSlotGroup(locale.tr('evening'), evening),
         ],
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Best Times — Smart / Perfect-fit slots
+  // ---------------------------------------------------------------------------
+  Widget _buildBestTimesSection(LocaleProvider locale) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.auto_awesome, size: 18, color: Color(0xFF0D9488)),
+            const SizedBox(width: 6),
+            Text(
+              locale.tr('best_times'),
+              style: AppTextStyles.labelMedium.copyWith(
+                color: const Color(0xFF0D9488),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 10,
+          children: _smartSlots.map((slot) {
+            final time = slot['time'] as String;
+            final available = slot['available'] as bool? ?? true;
+            final slotType = slot['slotType'] as String? ?? 'smart';
+            final discount = (slot['discount'] as num?)?.toDouble() ?? 0;
+            final finalPrice = (slot['finalPrice'] as num?)?.toDouble() ?? widget.totalPrice;
+            final reason = slot['reason'] as String? ?? '';
+            final isSelected = _selectedTime == time;
+            final isPerfectFit = slotType == 'perfect_fit';
+
+            final borderColor = isPerfectFit
+                ? const Color(0xFFF59E0B) // amber
+                : const Color(0xFF0D9488); // teal
+
+            return GestureDetector(
+              onTap: available
+                  ? () {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _selectedTime = time;
+                      });
+                    }
+                  : null,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? borderColor.withValues(alpha: 0.15)
+                      : AppColors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSelected ? borderColor : borderColor.withValues(alpha: 0.5),
+                    width: isSelected ? 2 : 1.5,
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          isPerfectFit ? '\u2726 ' : '\u2605 ',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: borderColor,
+                          ),
+                        ),
+                        Text(
+                          formatTime12h(time),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? borderColor
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    // Price with discount
+                    if (discount > 0)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '\u20B9${finalPrice.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: borderColor,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '\u20B9${widget.totalPrice.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ],
+                      ),
+                    // Label
+                    if (isPerfectFit)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          locale.tr('perfect_fit'),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: borderColor,
+                          ),
+                        ),
+                      )
+                    else if (reason.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          reason,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
       ],
     );
   }
@@ -605,55 +806,124 @@ class _BookingScreenState extends State<BookingScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: slots.map((slot) {
-            final time = slot['time'] as String;
-            final available = slot['available'] as bool;
-            final isSelected = _selectedTime == time;
+          children: slots.map((slot) => _buildSlotChip(slot)).toList(),
+        ),
+      ],
+    );
+  }
 
-            return GestureDetector(
-              onTap: available
-                  ? () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        _selectedTime = time;
-                      });
-                    }
-                  : null,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.primary
-                      : available
-                          ? AppColors.white
-                          : AppColors.softSurface,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppColors.primary
-                        : available
-                            ? AppColors.border
-                            : AppColors.softSurface,
-                  ),
-                ),
-                child: Text(
+  Widget _buildSlotChip(Map<String, dynamic> slot) {
+    final time = slot['time'] as String;
+    final available = slot['available'] as bool? ?? true;
+    final isSelected = _selectedTime == time;
+    final slotType = slot['slotType'] as String?;
+    final isSmart = slotType == 'smart';
+    final isPerfectFit = slotType == 'perfect_fit';
+    final isSpecial = isSmart || isPerfectFit;
+    final discount = (slot['discount'] as num?)?.toDouble() ?? 0;
+    final finalPrice = (slot['finalPrice'] as num?)?.toDouble() ?? widget.totalPrice;
+
+    Color borderColor;
+    Color bgColor;
+    Color textColor;
+
+    if (isSelected) {
+      if (isPerfectFit) {
+        borderColor = const Color(0xFFF59E0B);
+        bgColor = const Color(0xFFF59E0B).withValues(alpha: 0.15);
+        textColor = const Color(0xFFF59E0B);
+      } else if (isSmart) {
+        borderColor = const Color(0xFF0D9488);
+        bgColor = const Color(0xFF0D9488).withValues(alpha: 0.15);
+        textColor = const Color(0xFF0D9488);
+      } else {
+        borderColor = AppColors.primary;
+        bgColor = AppColors.primary;
+        textColor = AppColors.white;
+      }
+    } else if (!available) {
+      borderColor = AppColors.softSurface;
+      bgColor = AppColors.softSurface;
+      textColor = AppColors.textMuted;
+    } else if (isPerfectFit) {
+      borderColor = const Color(0xFFF59E0B).withValues(alpha: 0.5);
+      bgColor = AppColors.white;
+      textColor = AppColors.textPrimary;
+    } else if (isSmart) {
+      borderColor = const Color(0xFF0D9488).withValues(alpha: 0.5);
+      bgColor = AppColors.white;
+      textColor = AppColors.textPrimary;
+    } else {
+      borderColor = AppColors.border;
+      bgColor = AppColors.white;
+      textColor = AppColors.textPrimary;
+    }
+
+    return GestureDetector(
+      onTap: available
+          ? () {
+              HapticFeedback.selectionClick();
+              setState(() {
+                _selectedTime = time;
+              });
+            }
+          : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor, width: isSpecial ? 1.5 : 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isPerfectFit)
+                  Text('\u2726 ', style: TextStyle(fontSize: 12, color: const Color(0xFFF59E0B)))
+                else if (isSmart)
+                  Text('\u2605 ', style: TextStyle(fontSize: 12, color: const Color(0xFF0D9488))),
+                Text(
                   formatTime12h(time),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: isSelected
-                        ? AppColors.white
-                        : available
-                            ? AppColors.textPrimary
-                            : AppColors.textMuted,
+                    color: textColor,
                   ),
                 ),
+              ],
+            ),
+            if (isSpecial && discount > 0 && available)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '\u20B9${finalPrice.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: isPerfectFit ? const Color(0xFFF59E0B) : const Color(0xFF0D9488),
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      '\u20B9${widget.totalPrice.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: AppColors.textMuted,
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            );
-          }).toList(),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -725,6 +995,23 @@ class _BookingScreenState extends State<BookingScreen> {
   // ---------------------------------------------------------------------------
   Widget _buildConfirmBar() {
     final dateStr = DateFormat('EEE, d MMM').format(_selectedDate);
+    final locale = context.watch<LocaleProvider>();
+
+    // Determine if the selected slot has a smart discount
+    double displayPrice = widget.totalPrice;
+    String? smartLabel;
+    if (_selectedTime != null) {
+      final match = _slots.where((s) => s['time'] == _selectedTime);
+      if (match.isNotEmpty) {
+        final s = match.first;
+        final slotType = s['slotType'] as String?;
+        final fp = (s['finalPrice'] as num?)?.toDouble();
+        if ((slotType == 'smart' || slotType == 'perfect_fit') && fp != null && fp < widget.totalPrice) {
+          displayPrice = fp;
+          smartLabel = locale.tr('smart_discount');
+        }
+      }
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -758,18 +1045,48 @@ class _BookingScreenState extends State<BookingScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _selectedStylistName ?? context.watch<LocaleProvider>().tr('any_stylist'),
+                      _selectedStylistName ?? locale.tr('any_stylist'),
                       style: AppTextStyles.caption,
                     ),
-                    Text(
-                      '\u20B9${widget.totalPrice.toStringAsFixed(0)}',
-                      style: AppTextStyles.caption,
-                    ),
+                    if (smartLabel != null)
+                      Row(
+                        children: [
+                          Text(
+                            '\u20B9${displayPrice.toStringAsFixed(0)}',
+                            style: AppTextStyles.caption.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0D9488),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '\u20B9${widget.totalPrice.toStringAsFixed(0)}',
+                            style: AppTextStyles.caption.copyWith(
+                              decoration: TextDecoration.lineThrough,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            smartLabel,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: const Color(0xFF0D9488),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Text(
+                        '\u20B9${widget.totalPrice.toStringAsFixed(0)}',
+                        style: AppTextStyles.caption,
+                      ),
                   ],
                 ),
               ),
               AppButton(
-                text: '${context.watch<LocaleProvider>().tr('pay_and_book')} \u20B9${widget.totalPrice.toStringAsFixed(0)}',
+                text: '${locale.tr('pay_and_book')} \u20B9${displayPrice.toStringAsFixed(0)}',
                 onPressed: _confirmBooking,
                 isLoading: _isBooking,
                 icon: Icons.payment,
