@@ -344,6 +344,8 @@ class AppTranslations {
     'faq_refund_answer': 'Refunds are processed within 5-7 business days to your original payment method.',
     'faq_reschedule': 'Can I reschedule?',
     'faq_reschedule_answer': 'Currently you need to cancel and rebook. Rescheduling feature coming soon.',
+    'your_appointment_duration': 'Your {duration}-min appointment',
+    'slot_just_booked': 'Your selected slot was just booked. Please pick another.',
   };
 
   // === GUJARATI (Transliterated — same pronunciation as English) ===
@@ -685,5 +687,7 @@ class AppTranslations {
     'faq_refund_answer': 'રિફંડ 5-7 બિઝનેસ ડેઝમાં ઓરિજિનલ પેમેન્ટ મેથડમાં પ્રોસેસ થાય છે.',
     'faq_reschedule': 'રિશેડ્યૂલ થઈ શકે?',
     'faq_reschedule_answer': 'હાલમાં કેન્સલ કરીને ફરી બુક કરો. રિશેડ્યૂલ ફીચર જલ્દી આવશે.',
+    'your_appointment_duration': 'તમારો {duration}-મિનિટ અપોઇન્ટમેન્ટ',
+    'slot_just_booked': 'તમારો સ્લોટ હમણાં બુક થયો. બીજો પસંદ કરો.',
   };
 }

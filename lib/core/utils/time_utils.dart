@@ -23,3 +23,27 @@ String formatTime12h(String? time24) {
 String formatTimeRange12h(String? startTime, String? endTime) {
   return '${formatTime12h(startTime)} - ${formatTime12h(endTime)}';
 }
+
+/// Adds [minutes] to a 24-hour time string like "09:00" and returns "09:30".
+String addMinutesToTimeStr(String time24, int minutes) {
+  try {
+    final parts = time24.split(':');
+    if (parts.length < 2) return time24;
+    final totalMinutes =
+        int.parse(parts[0]) * 60 + int.parse(parts[1]) + minutes;
+    final h = (totalMinutes ~/ 60) % 24;
+    final m = totalMinutes % 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+  } catch (_) {
+    return time24;
+  }
+}
+
+/// Formats a slot's time range for display.
+/// Uses [endTime] if available, otherwise calculates from [time] + [durationMinutes].
+String formatSlotRange12h(String time, String? endTime, int durationMinutes) {
+  final end = (endTime != null && endTime.isNotEmpty)
+      ? endTime
+      : addMinutesToTimeStr(time, durationMinutes);
+  return '${formatTime12h(time)} - ${formatTime12h(end)}';
+}

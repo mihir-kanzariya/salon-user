@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -55,6 +56,7 @@ class _BookingScreenState extends State<BookingScreen> {
   bool _notesExpanded = false;
   int _advanceBookingDays = 15;
   final Set<String> _expandedGroups = {};
+  Timer? _slotRefreshTimer;
 
   @override
   void initState() {
@@ -62,10 +64,14 @@ class _BookingScreenState extends State<BookingScreen> {
     _initRazorpay();
     _loadSalonSettings();
     _loadSlots();
+    _slotRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) _loadSlots(silent: true);
+    });
   }
 
   @override
   void dispose() {
+    _slotRefreshTimer?.cancel();
     _disposeRazorpay();
     _notesController.dispose();
     super.dispose();
@@ -84,14 +90,16 @@ class _BookingScreenState extends State<BookingScreen> {
     } catch (_) {}
   }
 
-  Future<void> _loadSlots() async {
+  Future<void> _loadSlots({bool silent = false}) async {
     try {
-      setState(() {
-        _isLoadingSlots = true;
-        _selectedTime = null;
-        _smartSlots = [];
-        _slotSummary = {};
-      });
+      if (!silent) {
+        setState(() {
+          _isLoadingSlots = true;
+          _selectedTime = null;
+          _smartSlots = [];
+          _slotSummary = {};
+        });
+      }
 
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
@@ -123,18 +131,35 @@ class _BookingScreenState extends State<BookingScreen> {
         _slotSummary = {};
       }
 
-      // Nudge 1: Pre-select the best smart slot
-      if (_smartSlots.isNotEmpty) {
-        _selectedTime = _smartSlots.first['time'] as String?;
+      if (silent) {
+        // Check if previously selected slot is still available
+        if (_selectedTime != null) {
+          final stillAvailable = _slots.any(
+              (s) => s['time'] == _selectedTime && s['available'] == true);
+          if (!stillAvailable) {
+            _selectedTime = null;
+            if (mounted) {
+              SnackbarUtils.showError(context,
+                  context.read<LocaleProvider>().tr('slot_just_booked'));
+            }
+          }
+        }
+        setState(() {});
+      } else {
+        // Nudge 1: Pre-select the best smart slot
+        if (_smartSlots.isNotEmpty) {
+          _selectedTime = _smartSlots.first['time'] as String?;
+        }
+        setState(() {
+          _isLoadingSlots = false;
+        });
       }
-
-      setState(() {
-        _isLoadingSlots = false;
-      });
     } catch (e) {
-      setState(() {
-        _isLoadingSlots = false;
-      });
+      if (!silent) {
+        setState(() {
+          _isLoadingSlots = false;
+        });
+      }
     }
   }
 
@@ -740,6 +765,25 @@ class _BookingScreenState extends State<BookingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Duration context banner
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                locale.tr('your_appointment_duration').replaceAll('{duration}', '${widget.totalDuration}'),
+                style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
         // Best Times section (smart / perfect_fit slots)
         if (_smartSlots.isNotEmpty) ...[
           _buildBestTimesSection(locale),
@@ -891,7 +935,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           ),
                         ),
                         Text(
-                          formatTime12h(time),
+                          formatSlotRange12h(time, slot['endTime'] as String?, widget.totalDuration),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -1151,7 +1195,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 else if (isSmart)
                   Text('\u2605 ', style: TextStyle(fontSize: 12, color: const Color(0xFF0D9488))),
                 Text(
-                  formatTime12h(time),
+                  formatSlotRange12h(time, slot['endTime'] as String?, widget.totalDuration),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
