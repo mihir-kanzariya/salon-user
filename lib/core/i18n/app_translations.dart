@@ -133,6 +133,9 @@ class AppTranslations {
     'fills_gap': 'Fills gap perfectly',
     'last_slot': 'Last slot of the day',
     'smart_discount': 'Smart Slot Saving',
+    'order_summary': 'Order Summary',
+    'confirm_and_pay': 'Confirm & Pay',
+    'cancellation_policy_note': 'Free cancellation up to 2 hours before appointment',
 
     // === Booking Status ===
     'status_awaiting_payment': 'Awaiting Payment',
@@ -471,6 +474,9 @@ class AppTranslations {
     'fills_gap': 'ગેપ પરફેક્ટલી ભરે છે',
     'last_slot': 'દિવસનો છેલ્લો સ્લોટ',
     'smart_discount': 'સ્માર્ટ સ્લોટ બચત',
+    'order_summary': 'ઓર્ડર સમરી',
+    'confirm_and_pay': 'કન્ફર્મ & પે',
+    'cancellation_policy_note': 'અપોઇન્ટમેન્ટના 2 કલાક પહેલાં ફ્રી કેન્સલેશન',
 
     // === Booking Status ===
     'status_awaiting_payment': 'પેમેન્ટ પેન્ડિંગ',

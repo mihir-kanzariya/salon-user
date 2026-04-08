@@ -153,6 +153,112 @@ class _BookingScreenState extends State<BookingScreen> {
     _razorpay.clear();
   }
 
+  /// Show order summary bottom sheet before payment
+  void _showOrderSummary() {
+    final locale = context.read<LocaleProvider>();
+    final selectedSlot = _smartSlots.isNotEmpty
+        ? _smartSlots.firstWhere((s) => s['time'] == _selectedTime, orElse: () => {})
+        : <String, dynamic>{};
+    final slotType = selectedSlot['slotType'] as String? ?? 'regular';
+    final discount = (selectedSlot['discount'] as num?)?.toDouble() ?? 0;
+    final finalPrice = (selectedSlot['finalPrice'] as num?)?.toDouble() ?? widget.totalPrice;
+    final formattedDate = DateFormat('EEE, d MMM yyyy').format(_selectedDate);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 16),
+              Text(locale.tr('order_summary'), style: AppTextStyles.h3),
+              const SizedBox(height: 16),
+              // Salon & schedule
+              Row(children: [
+                const Icon(Icons.storefront, color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text(widget.salonName, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w600))),
+              ]),
+              const SizedBox(height: 8),
+              Row(children: [
+                const Icon(Icons.calendar_today, size: 16, color: AppColors.textMuted),
+                const SizedBox(width: 8),
+                Text(formattedDate, style: AppTextStyles.bodyMedium),
+              ]),
+              const SizedBox(height: 4),
+              Row(children: [
+                const Icon(Icons.access_time, size: 16, color: AppColors.textMuted),
+                const SizedBox(width: 8),
+                Text('$_selectedTime  •  ${widget.totalDuration} min', style: AppTextStyles.bodyMedium),
+              ]),
+              const SizedBox(height: 4),
+              Row(children: [
+                const Icon(Icons.person, size: 16, color: AppColors.textMuted),
+                const SizedBox(width: 8),
+                Text(_selectedStylistName ?? locale.tr('any_stylist'), style: AppTextStyles.bodyMedium),
+              ]),
+              const Divider(height: 24),
+              // Services
+              Text('${locale.tr('services')} (${widget.serviceIds.length})', style: AppTextStyles.labelLarge),
+              const SizedBox(height: 8),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text(locale.tr('subtotal'), style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+                Text('\u20B9${widget.totalPrice.toStringAsFixed(0)}', style: AppTextStyles.bodyMedium),
+              ]),
+              if (discount > 0) ...[
+                const SizedBox(height: 4),
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Row(children: [
+                    const Icon(Icons.bolt, size: 14, color: AppColors.success),
+                    const SizedBox(width: 4),
+                    Text(locale.tr('smart_discount'), style: AppTextStyles.bodyMedium.copyWith(color: AppColors.success)),
+                  ]),
+                  Text('-${discount.toStringAsFixed(0)}%', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.success, fontWeight: FontWeight.w600)),
+                ]),
+              ],
+              const Divider(height: 16),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text(locale.tr('total'), style: AppTextStyles.h4),
+                Text('\u20B9${finalPrice.toStringAsFixed(0)}', style: AppTextStyles.h3.copyWith(color: AppColors.primary)),
+              ]),
+              const SizedBox(height: 16),
+              // Cancellation policy
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: AppColors.warningLight, borderRadius: BorderRadius.circular(8)),
+                child: Row(children: [
+                  const Icon(Icons.info_outline, size: 16, color: AppColors.accentDark),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(locale.tr('cancellation_policy_note'), style: AppTextStyles.caption.copyWith(color: AppColors.accentDark))),
+                ]),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: AppButton(
+                  text: '${locale.tr('confirm_and_pay')} \u20B9${finalPrice.toStringAsFixed(0)}',
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _confirmBooking();
+                  },
+                  icon: Icons.payment,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Pay-first flow: create booking (holds slot) + Razorpay order → open checkout
   Future<void> _confirmBooking() async {
     if (_selectedTime == null) {
@@ -824,7 +930,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 1),
                         child: Text(
-                          'Save \u20B9${discount.toStringAsFixed(0)}',
+                          'Save ${discount.toStringAsFixed(0)}%',
                           style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -1084,7 +1190,7 @@ class _BookingScreenState extends State<BookingScreen> {
               Padding(
                 padding: const EdgeInsets.only(top: 1),
                 child: Text(
-                  'Save \u20B9${discount.toStringAsFixed(0)}',
+                  'Save ${discount.toStringAsFixed(0)}%',
                   style: const TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w600,
@@ -1322,7 +1428,7 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
               AppButton(
                 text: '${locale.tr('pay_and_book')} \u20B9${displayPrice.toStringAsFixed(0)}',
-                onPressed: _confirmBooking,
+                onPressed: _selectedTime == null ? null : _showOrderSummary,
                 isLoading: _isBooking,
                 icon: Icons.payment,
                 width: 180,
