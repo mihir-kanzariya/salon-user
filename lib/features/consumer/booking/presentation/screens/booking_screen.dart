@@ -446,43 +446,27 @@ class _BookingScreenState extends State<BookingScreen> {
       ),
       body: Column(
         children: [
-          // Step indicator
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: AppColors.white,
-            child: Row(
-              children: [
-                _StepDot(label: context.watch<LocaleProvider>().tr('stylists'), isActive: true, isCompleted: _selectedStylistId != null || _selectedStylistName == null),
-                Expanded(child: Container(height: 2, color: _selectedTime != null ? AppColors.primary : AppColors.border)),
-                _StepDot(label: 'Date', isActive: true, isCompleted: true),
-                Expanded(child: Container(height: 2, color: _selectedTime != null ? AppColors.primary : AppColors.border)),
-                _StepDot(label: 'Time', isActive: _selectedDate != null, isCompleted: _selectedTime != null),
-                Expanded(child: Container(height: 2, color: _selectedTime != null ? AppColors.primary : AppColors.border)),
-                _StepDot(label: 'Confirm', isActive: _selectedTime != null, isCompleted: false),
-              ],
-            ),
-          ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Section 1: Stylist Selection
                   _buildStylistSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 10),
 
                   // Section 2: Date Selection
                   _buildDateSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 10),
 
                   // Section 3: Time Slots
                   _buildTimeSlotsSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 10),
 
                   // Section 4: Notes
                   _buildNotesSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -502,16 +486,8 @@ class _BookingScreenState extends State<BookingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(Icons.person_outline, size: 20, color: AppColors.textPrimary),
-            const SizedBox(width: 8),
-            Text(context.watch<LocaleProvider>().tr('select_stylist'), style: AppTextStyles.h4),
-          ],
-        ),
-        const SizedBox(height: 12),
         SizedBox(
-          height: 90,
+          height: 68,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: widget.members.length + 1,
@@ -572,7 +548,7 @@ class _BookingScreenState extends State<BookingScreen> {
               padding: isSelected ? const EdgeInsets.all(2) : null,
               child: isAny
                   ? CircleAvatar(
-                      radius: 24,
+                      radius: 20,
                       backgroundColor: AppColors.softSurface,
                       child: Icon(
                         Icons.groups_outlined,
@@ -581,7 +557,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       ),
                     )
                   : CircleAvatar(
-                      radius: 24,
+                      radius: 20,
                       backgroundColor: AppColors.softSurface,
                       backgroundImage: photoUrl != null && photoUrl.isNotEmpty
                           ? CachedNetworkImageProvider(ApiConfig.imageUrl(photoUrl) ?? photoUrl)
@@ -1558,13 +1534,14 @@ class _BookingScreenState extends State<BookingScreen> {
                   ],
                 ),
               ),
-              AppButton(
-                text: '${locale.tr('pay_and_book')} \u20B9${displayPrice.toStringAsFixed(0)}',
-                onPressed: _selectedTime == null ? null : _showOrderSummary,
-                isLoading: _isBooking,
-                icon: Icons.payment,
-                width: 180,
-                height: 42,
+              Flexible(
+                child: AppButton(
+                  text: '${locale.tr('pay_and_book')} \u20B9${displayPrice.toStringAsFixed(0)}',
+                  onPressed: _selectedTime == null ? null : _showOrderSummary,
+                  isLoading: _isBooking,
+                  icon: Icons.payment,
+                  height: 42,
+                ),
               ),
             ],
           ),
