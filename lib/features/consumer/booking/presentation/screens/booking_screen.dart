@@ -421,6 +421,11 @@ class _BookingScreenState extends State<BookingScreen> {
     return _slots.where((slot) {
       final hour = int.tryParse((slot['time'] as String).split(':')[0]) ?? 0;
       final available = slot['available'] as bool? ?? true;
+      final slotType = slot['slotType'] as String?;
+      // Exclude smart/perfect_fit slots already shown in Best Times section
+      if (_smartSlots.isNotEmpty && (slotType == 'smart' || slotType == 'perfect_fit')) {
+        return false;
+      }
       return hour >= fromHour && hour < toHour && available;
     }).toList();
   }
@@ -487,7 +492,7 @@ class _BookingScreenState extends State<BookingScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 68,
+          height: 72,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: widget.members.length + 1,
@@ -533,7 +538,7 @@ class _BookingScreenState extends State<BookingScreen> {
         _loadSlots();
       },
       child: Container(
-        width: 72,
+        width: 68,
         margin: const EdgeInsets.only(right: 8),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -575,7 +580,7 @@ class _BookingScreenState extends State<BookingScreen> {
             Text(
               name,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color:
                     isSelected ? AppColors.textPrimary : AppColors.textSecondary,
@@ -597,15 +602,6 @@ class _BookingScreenState extends State<BookingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(Icons.calendar_today_outlined,
-                size: 20, color: AppColors.textPrimary),
-            const SizedBox(width: 8),
-            Text(context.watch<LocaleProvider>().tr('select_date'), style: AppTextStyles.h4),
-          ],
-        ),
-        const SizedBox(height: 12),
         SizedBox(
           height: 70,
           child: ListView.builder(
@@ -684,15 +680,6 @@ class _BookingScreenState extends State<BookingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(Icons.access_time_outlined,
-                size: 20, color: AppColors.textPrimary),
-            const SizedBox(width: 8),
-            Text(context.watch<LocaleProvider>().tr('select_time'), style: AppTextStyles.h4),
-          ],
-        ),
-        const SizedBox(height: 12),
         if (_isLoadingSlots)
           const SizedBox(height: 80, child: LoadingWidget())
         else if (_slots.isEmpty)
@@ -802,30 +789,6 @@ class _BookingScreenState extends State<BookingScreen> {
         // Best Times section (smart / perfect_fit slots)
         if (_smartSlots.isNotEmpty) ...[
           _buildBestTimesSection(locale),
-          if (hasTimeGroups) const SizedBox(height: 20),
-        ] else if (_slots.isNotEmpty) ...[
-          // No smart slots means open day — show friendly message
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0D9488).withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.check_circle_outline, size: 16, color: Color(0xFF0D9488)),
-                const SizedBox(width: 8),
-                Text(
-                  'All times available at regular price',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: const Color(0xFF0D9488),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
           if (hasTimeGroups) const SizedBox(height: 20),
         ],
         if (earlyMorning.isNotEmpty) _buildSlotGroup(locale.tr('early_morning'), earlyMorning),
@@ -1242,7 +1205,7 @@ class _BookingScreenState extends State<BookingScreen> {
             }
           : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(8),
@@ -1261,7 +1224,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 Text(
                   formatSlotRange12h(time, slot['endTime'] as String?, widget.totalDuration),
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: textColor,
                   ),
@@ -1443,7 +1406,6 @@ class _BookingScreenState extends State<BookingScreen> {
   // Section 5: Sticky Confirm Bar
   // ---------------------------------------------------------------------------
   Widget _buildConfirmBar() {
-    final dateStr = DateFormat('EEE, d MMM').format(_selectedDate);
     final locale = context.watch<LocaleProvider>();
 
     // Determine if the selected slot has a smart discount
@@ -1488,21 +1450,12 @@ class _BookingScreenState extends State<BookingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '$dateStr at ${formatTime12h(_selectedTime)}',
-                      style: AppTextStyles.labelLarge,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _selectedStylistName ?? locale.tr('any_stylist'),
-                      style: AppTextStyles.caption,
-                    ),
                     if (smartLabel != null)
                       Row(
                         children: [
                           Text(
                             '\u20B9${displayPrice.toStringAsFixed(0)}',
-                            style: AppTextStyles.caption.copyWith(
+                            style: AppTextStyles.labelLarge.copyWith(
                               fontWeight: FontWeight.w700,
                               color: const Color(0xFF0D9488),
                             ),
@@ -1529,14 +1482,15 @@ class _BookingScreenState extends State<BookingScreen> {
                     else
                       Text(
                         '\u20B9${widget.totalPrice.toStringAsFixed(0)}',
-                        style: AppTextStyles.caption,
+                        style: AppTextStyles.labelLarge,
                       ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Flexible(
                 child: AppButton(
-                  text: '${locale.tr('pay_and_book')} \u20B9${displayPrice.toStringAsFixed(0)}',
+                  text: 'Pay \u20B9${displayPrice.toStringAsFixed(0)}',
                   onPressed: _selectedTime == null ? null : _showOrderSummary,
                   isLoading: _isBooking,
                   icon: Icons.payment,
