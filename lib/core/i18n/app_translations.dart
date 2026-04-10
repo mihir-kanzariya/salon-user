@@ -346,6 +346,14 @@ class AppTranslations {
     'faq_reschedule_answer': 'Currently you need to cancel and rebook. Rescheduling feature coming soon.',
     'your_appointment_duration': 'Your {duration}-min appointment',
     'slot_just_booked': 'Your selected slot was just booked. Please pick another.',
+    'slots_booked_today': '{booked} of {total} slots booked today',
+    'remaining': '{count} remaining',
+    'filling_fast': 'Filling fast',
+    'most_available': 'Most available',
+    'booked_percent': '{percent}% booked',
+    'all_slots_booked': 'All slots are booked for this date',
+    'try_another_date': 'Try another day!',
+    'no_availability': 'No availability for this date',
   };
 
   // === GUJARATI (Transliterated — same pronunciation as English) ===
@@ -689,5 +697,13 @@ class AppTranslations {
     'faq_reschedule_answer': 'હાલમાં કેન્સલ કરીને ફરી બુક કરો. રિશેડ્યૂલ ફીચર જલ્દી આવશે.',
     'your_appointment_duration': 'તમારો {duration}-મિનિટ અપોઇન્ટમેન્ટ',
     'slot_just_booked': 'તમારો સ્લોટ હમણાં બુક થયો. બીજો પસંદ કરો.',
+    'slots_booked_today': '{booked} માંથી {total} સ્લોટ બુક',
+    'remaining': '{count} બાકી',
+    'filling_fast': 'ઝડપથી ભરાઈ રહ્યું',
+    'most_available': 'સૌથી વધુ ઉપલબ્ધ',
+    'booked_percent': '{percent}% બુક',
+    'all_slots_booked': 'આ ડેટ માટે બધા સ્લોટ બુક',
+    'try_another_date': 'બીજા દિવસ ટ્રાય કરો!',
+    'no_availability': 'આ ડેટ માટે ઉપલબ્ધતા નથી',
   };
 }

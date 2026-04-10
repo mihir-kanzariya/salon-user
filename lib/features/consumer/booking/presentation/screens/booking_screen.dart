@@ -420,7 +420,8 @@ class _BookingScreenState extends State<BookingScreen> {
   List<Map<String, dynamic>> _filterSlots(int fromHour, int toHour) {
     return _slots.where((slot) {
       final hour = int.tryParse((slot['time'] as String).split(':')[0]) ?? 0;
-      return hour >= fromHour && hour < toHour;
+      final available = slot['available'] as bool? ?? true;
+      return hour >= fromHour && hour < toHour && available;
     }).toList();
   }
 
@@ -719,31 +720,37 @@ class _BookingScreenState extends State<BookingScreen> {
         if (_isLoadingSlots)
           const SizedBox(height: 80, child: LoadingWidget())
         else if (_slots.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            // D.2: Enhanced empty state with icon
-            child: Center(
-              child: Column(
-                children: [
-                  Icon(Icons.event_busy_outlined, size: 40, color: AppColors.textMuted),
-                  const SizedBox(height: 8),
-                  Text(
-                    context.watch<LocaleProvider>().tr('no_slots_available'),
-                    style: AppTextStyles.bodySmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Try selecting a different date or stylist',
-                    style: AppTextStyles.caption,
-                  ),
-                ],
+          Builder(builder: (context) {
+            final total = (_slotSummary['totalPossibleSlots'] as num?)?.toInt() ?? 0;
+            final message = total > 0
+                ? context.watch<LocaleProvider>().tr('all_slots_booked')
+                : context.watch<LocaleProvider>().tr('no_availability');
+            final subtitle = total > 0
+                ? context.watch<LocaleProvider>().tr('try_another_date')
+                : 'Try selecting a different date or stylist';
+            return Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(12),
               ),
-            ),
-          )
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(
+                      total > 0 ? Icons.event_busy : Icons.event_busy_outlined,
+                      size: 40,
+                      color: total > 0 ? AppColors.warning : AppColors.textMuted,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(message, style: AppTextStyles.bodySmall),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: AppTextStyles.caption),
+                  ],
+                ),
+              ),
+            );
+          })
         else
           _buildGroupedSlots(),
       ],
@@ -784,6 +791,38 @@ class _BookingScreenState extends State<BookingScreen> {
             ],
           ),
         ),
+        // Scarcity banner
+        Builder(builder: (context) {
+          final booked = (_slotSummary['bookedSlots'] as num?)?.toInt() ?? 0;
+          final total = (_slotSummary['totalPossibleSlots'] as num?)?.toInt() ?? 0;
+          final remaining = total - booked;
+          if (booked <= 0 || total <= 0) return const SizedBox.shrink();
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: AppColors.warningLight,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Text('\u{1F525} ', style: TextStyle(fontSize: 14)),
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
+                      style: TextStyle(fontSize: 12, color: const Color(0xFF92400E), fontFamily: 'DM Sans'),
+                      children: [
+                        TextSpan(text: '$booked of $total slots booked today \u2014 '),
+                        TextSpan(text: '$remaining remaining', style: const TextStyle(fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
         // Best Times section (smart / perfect_fit slots)
         if (_smartSlots.isNotEmpty) ...[
           _buildBestTimesSection(locale),
@@ -1063,8 +1102,57 @@ class _BookingScreenState extends State<BookingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTextStyles.labelMedium),
+        Text('$label (${slots.length} available)', style: AppTextStyles.labelMedium),
         const SizedBox(height: 8),
+        // Heat bar
+        Builder(builder: (context) {
+          final periodKey = label.toLowerCase().contains('morning') && !label.toLowerCase().contains('early') ? 'morning'
+              : label.toLowerCase().contains('afternoon') ? 'afternoon'
+              : label.toLowerCase().contains('evening') ? 'evening'
+              : 'earlyMorning';
+          final stats = _slotSummary[periodKey] as Map<String, dynamic>?;
+          if (stats == null) return const SizedBox.shrink();
+          final available = (stats['available'] as num?)?.toInt() ?? 0;
+          final total = (stats['total'] as num?)?.toInt() ?? 0;
+          if (total <= 0) return const SizedBox.shrink();
+          final bookedPct = ((total - available) / total * 100).round();
+          final isHot = bookedPct >= 70;
+          final isCool = bookedPct <= 30;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 4,
+                    decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+                    child: FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: bookedPct / 100,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isHot ? AppColors.error : isCool ? AppColors.success : AppColors.warning,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isHot ? '$bookedPct% booked \u2014 Filling fast'
+                      : isCool ? '$bookedPct% booked \u2014 Most available'
+                      : '$bookedPct% booked',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isHot ? AppColors.error : isCool ? AppColors.success : AppColors.textMuted,
+                    fontWeight: isHot || isCool ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
         Wrap(
           spacing: 8,
           runSpacing: 8,
