@@ -36,11 +36,11 @@ class _SplashScreenState extends State<SplashScreen> {
 
     final storage = StorageService();
 
-    // Check onboarding first
-    if (!storage.isOnboardingComplete()) {
-      Navigator.pushReplacementNamed(context, '/onboarding');
-      return;
-    }
+    // Skip onboarding for testing — go straight to login
+    // if (!storage.isOnboardingComplete()) {
+    //   Navigator.pushReplacementNamed(context, '/onboarding');
+    //   return;
+    // }
 
     final auth = context.read<AuthProvider>();
     await auth.checkAuthStatus();

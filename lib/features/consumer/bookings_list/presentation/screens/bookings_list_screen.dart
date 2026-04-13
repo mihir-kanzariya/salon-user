@@ -24,6 +24,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
   List<BookingModel> _completed = [];
   List<BookingModel> _cancelled = [];
   bool _isLoading = true;
+  String _error = '';
   bool _isLoadingMore = false;
 
   // Per-tab pagination state
@@ -72,7 +73,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
 
   Future<void> _loadBookings() async {
     try {
-      setState(() { _isLoading = true; });
+      setState(() { _isLoading = true; _error = ''; });
 
       // Reset pagination state
       _upcomingPage = 1;
@@ -99,7 +100,7 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
 
       setState(() { _isLoading = false; });
     } catch (e) {
-      setState(() { _isLoading = false; });
+      setState(() { _isLoading = false; _error = 'Failed to load bookings'; });
     }
   }
 
@@ -161,6 +162,8 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
       case 'in_progress': statusColor = AppColors.accent; break;
       case 'completed': statusColor = AppColors.success; break;
       case 'cancelled': statusColor = AppColors.error; break;
+      case 'awaiting_payment': statusColor = AppColors.warning; break;
+      case 'pending': statusColor = AppColors.accent; break;
       default: statusColor = AppColors.textMuted;
     }
 
@@ -246,6 +249,15 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
     bool hasMore,
   ) {
     if (_isLoading) return const SkeletonList(child: BookingCardSkeleton());
+    if (_error.isNotEmpty) {
+      return EmptyStateWidget(
+        icon: Icons.error_outline,
+        title: 'Something went wrong',
+        subtitle: _error,
+        actionText: 'Retry',
+        onAction: _loadBookings,
+      );
+    }
     if (bookings.isEmpty) {
       return EmptyStateWidget(icon: Icons.calendar_today_outlined, title: emptyMessage);
     }

@@ -12,12 +12,22 @@ class SubmitReviewScreen extends StatefulWidget {
   final String? salonName;
   final String? stylistId;
 
+  // Edit mode fields
+  final String? reviewId;
+  final int? existingSalonRating;
+  final int? existingStylistRating;
+  final String? existingComment;
+
   const SubmitReviewScreen({
     super.key,
     required this.bookingId,
     required this.salonId,
     this.salonName,
     this.stylistId,
+    this.reviewId,
+    this.existingSalonRating,
+    this.existingStylistRating,
+    this.existingComment,
   });
 
   @override
@@ -31,6 +41,18 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
   int _salonRating = 0;
   int _stylistRating = 0;
   bool _isSubmitting = false;
+
+  bool get _isEditing => widget.reviewId != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditing) {
+      _salonRating = widget.existingSalonRating ?? 0;
+      _stylistRating = widget.existingStylistRating ?? 0;
+      _commentController.text = widget.existingComment ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -47,8 +69,6 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
 
     try {
       final body = <String, dynamic>{
-        'booking_id': widget.bookingId,
-        'salon_id': widget.salonId,
         'salon_rating': _salonRating,
         'comment': _commentController.text.trim(),
       };
@@ -57,10 +77,16 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
         body['stylist_rating'] = _stylistRating;
       }
 
-      await _api.post(ApiConfig.reviews, body: body);
+      if (_isEditing) {
+        await _api.patch('${ApiConfig.reviews}/${widget.reviewId}', body: body);
+      } else {
+        body['booking_id'] = widget.bookingId;
+        body['salon_id'] = widget.salonId;
+        await _api.post(ApiConfig.reviews, body: body);
+      }
 
       if (!mounted) return;
-      SnackbarUtils.showSuccess(context, 'Review submitted successfully!');
+      SnackbarUtils.showSuccess(context, _isEditing ? 'Review updated successfully!' : 'Review submitted successfully!');
       Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -130,7 +156,7 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Write Review'),
+        title: Text(_isEditing ? 'Edit Review' : 'Write Review'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -254,7 +280,7 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
 
             // Submit button
             AppButton(
-              text: 'Submit Review',
+              text: _isEditing ? 'Update Review' : 'Submit Review',
               onPressed: _canSubmit ? _submitReview : null,
               isLoading: _isSubmitting,
               icon: Icons.send_rounded,

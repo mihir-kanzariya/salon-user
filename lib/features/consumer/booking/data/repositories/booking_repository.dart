@@ -76,12 +76,14 @@ class BookingRepository {
     required int duration,
     required double price,
     String? stylistMemberId,
+    int? displayInterval,
   }) async {
     final params = {
       'date': date,
       'duration': duration.toString(),
       'price': price.toString(),
       if (stylistMemberId != null) 'stylist_member_id': stylistMemberId,
+      if (displayInterval != null) 'display_interval': displayInterval.toString(),
     };
     final res = await _api.get(
       '${ApiConfig.bookings}/salon/$salonId/smart-slots',

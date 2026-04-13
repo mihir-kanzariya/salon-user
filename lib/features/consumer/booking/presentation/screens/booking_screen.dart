@@ -51,12 +51,14 @@ class _BookingScreenState extends State<BookingScreen> {
   List<Map<String, dynamic>> _smartSlots = [];
   Map<String, dynamic> _slotSummary = {};
   bool _isLoadingSlots = false;
+  String _slotLoadError = '';
   bool _isBooking = false;
   final _notesController = TextEditingController();
   bool _notesExpanded = false;
   int _advanceBookingDays = 15;
   final Set<String> _expandedGroups = {};
   Timer? _slotRefreshTimer;
+  bool _preciseMode = false; // false = 30-min intervals, true = 15-min (all slots)
 
   @override
   void initState() {
@@ -95,6 +97,7 @@ class _BookingScreenState extends State<BookingScreen> {
       if (!silent) {
         setState(() {
           _isLoadingSlots = true;
+          _slotLoadError = '';
           _selectedTime = null;
           _smartSlots = [];
           _slotSummary = {};
@@ -111,6 +114,7 @@ class _BookingScreenState extends State<BookingScreen> {
           duration: widget.totalDuration,
           price: widget.totalPrice,
           stylistMemberId: _selectedStylistId,
+          displayInterval: _preciseMode ? null : 30,
         );
         final allSlots = List<Map<String, dynamic>>.from(smartData['slots'] ?? []);
         _smartSlots = allSlots
@@ -158,6 +162,9 @@ class _BookingScreenState extends State<BookingScreen> {
       if (!silent) {
         setState(() {
           _isLoadingSlots = false;
+          _slots = [];
+          _smartSlots = [];
+          _slotLoadError = 'Failed to load available slots';
         });
       }
     }
@@ -180,6 +187,10 @@ class _BookingScreenState extends State<BookingScreen> {
 
   /// Show order summary bottom sheet before payment
   void _showOrderSummary() {
+    if (_selectedTime == null) {
+      SnackbarUtils.showError(context, 'Please select a time slot');
+      return;
+    }
     final locale = context.read<LocaleProvider>();
     final selectedSlot = _smartSlots.isNotEmpty
         ? _smartSlots.firstWhere((s) => s['time'] == _selectedTime, orElse: () => {})
@@ -269,10 +280,11 @@ class _BookingScreenState extends State<BookingScreen> {
                 width: double.infinity,
                 child: AppButton(
                   text: '${locale.tr('confirm_and_pay')} \u20B9${finalPrice.toStringAsFixed(0)}',
-                  onPressed: () {
+                  onPressed: _isBooking ? null : () {
                     Navigator.pop(ctx);
                     _confirmBooking();
                   },
+                  isLoading: _isBooking,
                   icon: Icons.payment,
                 ),
               ),
@@ -286,6 +298,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
   /// Pay-first flow: create booking (holds slot) + Razorpay order → open checkout
   Future<void> _confirmBooking() async {
+    if (_isBooking) return;
     if (_selectedTime == null) {
       SnackbarUtils.showError(context, 'Please select a time slot');
       return;
@@ -367,19 +380,25 @@ class _BookingScreenState extends State<BookingScreen> {
 
       Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
       Navigator.pushNamed(context, '/booking-success', arguments: {
-        'booking_id': _pendingBookingId,
+        'booking_id': _pendingBookingId ?? '',
         'salon_name': widget.salonName,
         'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
-        'time': _selectedTime!,
+        'time': _selectedTime ?? '',
         'stylist_name': _selectedStylistName ?? context.read<LocaleProvider>().tr('any_stylist'),
         'total_price': widget.totalPrice,
         'service_count': widget.serviceIds.length,
+        'total_duration': widget.totalDuration,
       });
     } catch (e) {
       setState(() => _isBooking = false);
       if (mounted) {
         SnackbarUtils.showError(context,
           'Payment received but verification failed. Don\'t worry — your booking will be confirmed shortly.');
+        // Navigate to booking detail so user can track status
+        if (_pendingBookingId != null) {
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+          Navigator.pushNamed(context, '/booking-detail', arguments: _pendingBookingId);
+        }
       }
     }
   }
@@ -682,6 +701,29 @@ class _BookingScreenState extends State<BookingScreen> {
       children: [
         if (_isLoadingSlots)
           const SizedBox(height: 80, child: LoadingWidget())
+        else if (_slotLoadError.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Column(
+                children: [
+                  const Icon(Icons.error_outline, size: 40, color: AppColors.error),
+                  const SizedBox(height: 8),
+                  Text(_slotLoadError, style: AppTextStyles.bodySmall),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: _loadSlots,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          )
         else if (_slots.isEmpty)
           Builder(builder: (context) {
             final total = (_slotSummary['totalPossibleSlots'] as num?)?.toInt() ?? 0;
@@ -786,6 +828,54 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
           );
         }),
+        // "More times" toggle — switches between 30-min and 15-min intervals
+        if (hasTimeGroups || _smartSlots.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _preciseMode = !_preciseMode;
+                      _expandedGroups.clear();
+                    });
+                    _loadSlots();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _preciseMode ? AppColors.primary.withValues(alpha: 0.1) : AppColors.softSurface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: _preciseMode ? AppColors.primary.withValues(alpha: 0.3) : AppColors.border,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _preciseMode ? Icons.view_comfortable : Icons.more_time,
+                          size: 14,
+                          color: _preciseMode ? AppColors.primary : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _preciseMode ? 'Fewer times' : 'More times',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: _preciseMode ? AppColors.primary : AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         // Best Times section (smart / perfect_fit slots)
         if (_smartSlots.isNotEmpty) ...[
           _buildBestTimesSection(locale),
@@ -1035,8 +1125,9 @@ class _BookingScreenState extends State<BookingScreen> {
 
   Widget _buildSlotGroup(String label, List<Map<String, dynamic>> slots) {
     final isExpanded = _expandedGroups.contains(label);
-    final showCollapse = slots.length > 3;
-    final visibleSlots = showCollapse && !isExpanded ? slots.take(3).toList() : slots;
+    final collapseThreshold = _preciseMode ? 4 : 6;
+    final showCollapse = slots.length > collapseThreshold;
+    final visibleSlots = showCollapse && !isExpanded ? slots.take(collapseThreshold).toList() : slots;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1097,22 +1188,36 @@ class _BookingScreenState extends State<BookingScreen> {
           runSpacing: 8,
           children: visibleSlots.map((slot) => _buildSlotChip(slot)).toList(),
         ),
-        if (showCollapse && !isExpanded)
+        if (showCollapse)
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: GestureDetector(
               onTap: () {
                 setState(() {
-                  _expandedGroups.add(label);
+                  if (isExpanded) {
+                    _expandedGroups.remove(label);
+                  } else {
+                    _expandedGroups.add(label);
+                  }
                 });
               },
-              child: Text(
-                'Show all (${slots.length})',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w500,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isExpanded ? 'Show less' : 'Show ${slots.length - collapseThreshold} more',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Icon(
+                    isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                ],
               ),
             ),
           ),
@@ -1491,7 +1596,7 @@ class _BookingScreenState extends State<BookingScreen> {
               Flexible(
                 child: AppButton(
                   text: 'Pay \u20B9${displayPrice.toStringAsFixed(0)}',
-                  onPressed: _selectedTime == null ? null : _showOrderSummary,
+                  onPressed: _selectedTime == null || _isBooking ? null : _showOrderSummary,
                   isLoading: _isBooking,
                   icon: Icons.payment,
                   height: 42,

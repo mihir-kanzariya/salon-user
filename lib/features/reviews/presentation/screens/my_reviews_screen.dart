@@ -4,29 +4,25 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/utils/error_handler.dart';
 import '../../../../core/utils/snackbar_utils.dart';
-import '../../../../core/widgets/loading_widget.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/skeletons/skeleton_layouts.dart';
 import '../../../../services/api_service.dart';
 import '../../../../config/api_config.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
-class ReviewsScreen extends StatefulWidget {
-  final String salonId;
-  final String? stylistMemberId;
-
-  const ReviewsScreen({super.key, required this.salonId, this.stylistMemberId});
+class MyReviewsScreen extends StatefulWidget {
+  const MyReviewsScreen({super.key});
 
   @override
-  State<ReviewsScreen> createState() => _ReviewsScreenState();
+  State<MyReviewsScreen> createState() => _MyReviewsScreenState();
 }
 
-class _ReviewsScreenState extends State<ReviewsScreen> {
+class _MyReviewsScreenState extends State<MyReviewsScreen> {
   final ApiService _api = ApiService();
   List<dynamic> _reviews = [];
   bool _isLoading = true;
+  bool _hasError = false;
 
-  // Pagination state
   int _page = 1;
   bool _hasMore = true;
   bool _isLoadingMore = false;
@@ -58,20 +54,13 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
     try {
       setState(() {
         _isLoading = true;
+        _hasError = false;
         _page = 1;
         _hasMore = true;
       });
-      final queryParams = <String, dynamic>{
-        'page': _page.toString(),
-        'limit': '10',
-      };
-      if (widget.stylistMemberId != null) {
-        queryParams['stylist_member_id'] = widget.stylistMemberId!;
-      }
       final response = await _api.get(
-        '${ApiConfig.reviews}/salon/${widget.salonId}',
-        auth: false,
-        queryParams: queryParams,
+        '${ApiConfig.reviews}/my',
+        queryParams: {'page': _page.toString(), 'limit': '10'},
       );
       final meta = response['meta'];
       _reviews = response['data'] ?? [];
@@ -85,7 +74,10 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
       });
     } catch (e) {
       if (mounted) ErrorHandler.handle(context, e);
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
     }
   }
 
@@ -96,17 +88,9 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
     _page++;
 
     try {
-      final queryParams = <String, dynamic>{
-        'page': _page.toString(),
-        'limit': '10',
-      };
-      if (widget.stylistMemberId != null) {
-        queryParams['stylist_member_id'] = widget.stylistMemberId!;
-      }
       final response = await _api.get(
-        '${ApiConfig.reviews}/salon/${widget.salonId}',
-        auth: false,
-        queryParams: queryParams,
+        '${ApiConfig.reviews}/my',
+        queryParams: {'page': _page.toString(), 'limit': '10'},
       );
       final meta = response['meta'];
       final newReviews = response['data'] ?? [];
@@ -132,12 +116,16 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Delete Review'),
-        content: const Text('Are you sure you want to delete this review? This action cannot be undone.'),
+        content: const Text(
+            'Are you sure you want to delete this review? This action cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+            child: const Text('Delete',
+                style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -160,7 +148,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
       '/submit-review',
       arguments: {
         'booking_id': review['booking_id'] ?? review['booking'] ?? '',
-        'salon_id': review['salon_id'] ?? review['salon']?['_id'] ?? review['salon']?['id'] ?? widget.salonId,
+        'salon_id': review['salon_id'] ?? review['salon']?['_id'] ?? review['salon']?['id'] ?? '',
         'salon_name': review['salon']?['name'],
         'stylist_id': review['stylist_id'],
         'review_id': review['_id'] ?? review['id'],
@@ -172,20 +160,43 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
     if (result == true) _load();
   }
 
+  String _relativeDate(String isoDate) {
+    try {
+      final date = DateTime.parse(isoDate);
+      final now = DateTime.now();
+      final diff = now.difference(date);
+
+      if (diff.inDays == 0) return 'Today';
+      if (diff.inDays == 1) return 'Yesterday';
+      if (diff.inDays < 7) return '${diff.inDays} days ago';
+      if (diff.inDays < 30) return '${(diff.inDays / 7).floor()} weeks ago';
+      if (diff.inDays < 365) return '${(diff.inDays / 30).floor()} months ago';
+      return '${(diff.inDays / 365).floor()} years ago';
+    } catch (_) {
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final currentUserId = context.read<AuthProvider>().user?.id;
-
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Reviews')),
+      appBar: AppBar(title: const Text('My Reviews')),
       body: _isLoading
           ? const SkeletonList(child: ReviewCardSkeleton())
+          : _hasError
+              ? EmptyStateWidget(
+                  icon: Icons.error_outline,
+                  title: 'Something went wrong',
+                  subtitle: 'Failed to load reviews',
+                  actionText: 'Retry',
+                  onAction: _load,
+                )
           : _reviews.isEmpty
               ? const EmptyStateWidget(
                   icon: Icons.rate_review_outlined,
                   title: 'No reviews yet',
-                  subtitle: 'Be the first to leave a review!',
+                  subtitle: "You haven't reviewed any salons yet",
                 )
               : RefreshIndicator(
                   onRefresh: _load,
@@ -202,18 +213,21 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                             child: SizedBox(
                               width: 24,
                               height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2),
                             ),
                           ),
                         );
                       }
 
                       final review = _reviews[index];
-                      final customer = review['customer'];
-                      final salonRating = review['salon_rating'] ?? 0;
+                      final salonName = review['salon']?['name'] ?? 'Salon';
+                      final salonRating =
+                          (review['salon_rating'] as num?)?.toInt() ?? 0;
                       final stylistRating = review['stylist_rating'];
-                      final reviewUserId = customer?['_id'] ?? customer?['id'] ?? review['user_id'];
-                      final isOwnReview = currentUserId != null && reviewUserId == currentUserId;
+                      final comment = review['comment'] ?? '';
+                      final createdAt = review['created_at'] as String?;
+                      final reviewId = review['_id'] ?? review['id'];
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -222,22 +236,26 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Header row: salon name + actions
                               Row(
                                 children: [
                                   CircleAvatar(
                                     radius: 18,
                                     backgroundColor: AppColors.primaryLight,
-                                    child: Text(
-                                      (customer?['name'] ?? 'U')[0].toUpperCase(),
-                                      style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.w600),
-                                    ),
+                                    child: const Icon(Icons.store,
+                                        color: AppColors.white, size: 18),
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text(customer?['name'] ?? 'Anonymous', style: AppTextStyles.labelLarge),
+                                        Text(salonName,
+                                            style: AppTextStyles.labelLarge),
+                                        if (createdAt != null)
+                                          Text(_relativeDate(createdAt),
+                                              style: AppTextStyles.caption),
                                       ],
                                     ),
                                   ),
@@ -245,43 +263,61 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                                     children: List.generate(
                                       5,
                                       (i) => Icon(
-                                        i < salonRating ? Icons.star : Icons.star_border,
+                                        i < salonRating
+                                            ? Icons.star
+                                            : Icons.star_border,
                                         color: AppColors.ratingStar,
                                         size: 16,
                                       ),
                                     ),
                                   ),
-                                  if (isOwnReview)
-                                    PopupMenuButton<String>(
-                                      icon: const Icon(Icons.more_vert, size: 20, color: AppColors.textMuted),
-                                      padding: EdgeInsets.zero,
-                                      onSelected: (value) {
-                                        if (value == 'edit') {
-                                          _editReview(review);
-                                        } else if (value == 'delete') {
-                                          _deleteReview(review['_id'] ?? review['id']);
-                                        }
-                                      },
-                                      itemBuilder: (_) => [
-                                        const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                                        const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.error))),
-                                      ],
-                                    ),
+                                  PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert,
+                                        size: 20,
+                                        color: AppColors.textMuted),
+                                    padding: EdgeInsets.zero,
+                                    onSelected: (value) {
+                                      if (value == 'edit') {
+                                        _editReview(
+                                            Map<String, dynamic>.from(review));
+                                      } else if (value == 'delete') {
+                                        _deleteReview(reviewId);
+                                      }
+                                    },
+                                    itemBuilder: (_) => [
+                                      const PopupMenuItem(
+                                          value: 'edit',
+                                          child: Text('Edit')),
+                                      const PopupMenuItem(
+                                          value: 'delete',
+                                          child: Text('Delete',
+                                              style: TextStyle(
+                                                  color: AppColors.error))),
+                                    ],
+                                  ),
                                 ],
                               ),
-                              if (review['comment'] != null && (review['comment'] as String).isNotEmpty) ...[
+
+                              // Comment
+                              if (comment.isNotEmpty) ...[
                                 const SizedBox(height: 10),
-                                Text(review['comment'], style: AppTextStyles.bodyMedium),
+                                Text(comment,
+                                    style: AppTextStyles.bodyMedium),
                               ],
+
+                              // Stylist rating
                               if (stylistRating != null) ...[
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    Text('Stylist: ', style: AppTextStyles.caption),
+                                    Text('Stylist: ',
+                                        style: AppTextStyles.caption),
                                     ...List.generate(
                                       5,
                                       (i) => Icon(
-                                        i < stylistRating ? Icons.star : Icons.star_border,
+                                        i < (stylistRating as num).toInt()
+                                            ? Icons.star
+                                            : Icons.star_border,
                                         color: AppColors.accent,
                                         size: 14,
                                       ),
@@ -289,6 +325,8 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                                   ],
                                 ),
                               ],
+
+                              // Salon reply
                               if (review['reply'] != null) ...[
                                 const SizedBox(height: 10),
                                 Container(
@@ -298,11 +336,16 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text('Salon Reply', style: AppTextStyles.labelMedium.copyWith(color: AppColors.primary)),
+                                      Text('Salon Reply',
+                                          style: AppTextStyles.labelMedium
+                                              .copyWith(
+                                                  color: AppColors.primary)),
                                       const SizedBox(height: 4),
-                                      Text(review['reply'], style: AppTextStyles.bodySmall),
+                                      Text(review['reply'],
+                                          style: AppTextStyles.bodySmall),
                                     ],
                                   ),
                                 ),

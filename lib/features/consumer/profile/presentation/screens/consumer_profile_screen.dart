@@ -54,6 +54,11 @@ class ConsumerProfileScreen extends StatelessWidget {
                 onTap: () => Navigator.pushNamed(context, '/favorites'),
               ),
               _ProfileTile(
+                icon: Icons.rate_review_outlined,
+                title: 'My Reviews',
+                onTap: () => Navigator.pushNamed(context, '/my-reviews'),
+              ),
+              _ProfileTile(
                 icon: Icons.notifications_outlined,
                 title: context.watch<LocaleProvider>().tr('notifications'),
                 onTap: () => Navigator.pushNamed(context, '/notifications'),

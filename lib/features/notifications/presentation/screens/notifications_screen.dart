@@ -20,6 +20,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   final ApiService _api = ApiService();
   List<dynamic> _notifications = [];
   bool _isLoading = true;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -29,12 +30,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _load() async {
     try {
-      setState(() => _isLoading = true);
+      setState(() {
+        _isLoading = true;
+        _hasError = false;
+      });
       final response = await _api.get(ApiConfig.notifications);
       _notifications = response['data'] ?? [];
       setState(() => _isLoading = false);
     } catch (_) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
     }
   }
 
@@ -47,6 +54,49 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         }
       });
     } catch (_) {}
+  }
+
+  Future<void> _markAsRead(Map<String, dynamic> notification) async {
+    if (notification['is_read'] == true) return;
+    try {
+      final id = notification['id'];
+      if (id != null) {
+        await _api.put('${ApiConfig.notifications}/$id/read');
+      }
+      setState(() => notification['is_read'] = true);
+    } catch (_) {}
+  }
+
+  void _onNotificationTap(Map<String, dynamic> notification) {
+    _markAsRead(notification);
+    final type = notification['type'] as String? ?? '';
+    final referenceId = notification['reference_id'] as String?;
+
+    switch (type) {
+      case 'booking_confirmed':
+      case 'booking_cancelled':
+      case 'booking_reminder':
+      case 'booking_created':
+      case 'booking_completed':
+        if (referenceId != null) {
+          Navigator.pushNamed(context, '/booking-detail', arguments: referenceId);
+        }
+        break;
+      case 'payment_received':
+      case 'payment_success':
+        if (referenceId != null) {
+          Navigator.pushNamed(context, '/booking-detail', arguments: referenceId);
+        }
+        break;
+      case 'review_reply':
+      case 'review_reminder':
+      case 'review_request':
+        Navigator.pushNamed(context, '/my-reviews');
+        break;
+      default:
+        // Just mark as read, no navigation
+        break;
+    }
   }
 
   IconData _iconForType(String type) {
@@ -80,6 +130,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       body: _isLoading
           ? const SkeletonList(child: NotificationItemSkeleton(), count: 6)
+          : _hasError
+              ? EmptyStateWidget(
+                  icon: Icons.error_outline,
+                  title: 'Something went wrong',
+                  subtitle: 'Failed to load notifications',
+                  actionText: 'Retry',
+                  onAction: _load,
+                )
           : _notifications.isEmpty
               ? const EmptyStateWidget(
                   icon: Icons.notifications_none,
@@ -99,6 +157,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       return Container(
                         color: isRead ? null : AppColors.primary.withValues(alpha: 0.03),
                         child: ListTile(
+                          onTap: () => _onNotificationTap(n),
                           leading: CircleAvatar(
                             backgroundColor: isRead ? AppColors.softSurface : AppColors.primary.withValues(alpha: 0.1),
                             child: Icon(
@@ -114,6 +173,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             ),
                           ),
                           subtitle: Text(n['body'] ?? '', style: AppTextStyles.caption, maxLines: 2),
+                          trailing: !isRead
+                              ? Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                )
+                              : null,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                         ),
                       );

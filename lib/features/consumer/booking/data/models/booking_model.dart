@@ -79,6 +79,7 @@ class BookingModel {
       case 'completed': return 'Completed';
       case 'cancelled': return 'Cancelled';
       case 'no_show': return 'No Show';
+      case 'awaiting_payment': return 'Processing Payment';
       default: return status;
     }
   }

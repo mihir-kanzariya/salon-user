@@ -20,6 +20,7 @@ import 'features/consumer/booking/presentation/screens/booking_screen.dart';
 import 'features/notifications/presentation/screens/notifications_screen.dart';
 import 'features/reviews/presentation/screens/reviews_screen.dart';
 import 'features/reviews/presentation/screens/submit_review_screen.dart';
+import 'features/reviews/presentation/screens/my_reviews_screen.dart';
 import 'features/consumer/consumer_shell.dart';
 import 'features/consumer/booking_detail/presentation/screens/booking_detail_screen.dart';
 import 'features/consumer/booking/presentation/screens/booking_success_screen.dart';
@@ -181,13 +182,14 @@ class SaloonApp extends StatelessWidget {
         if (args == null) return _notFoundRoute();
         return SlidePageRoute(
           child: BookingSuccessScreen(
-            bookingId: args['booking_id'],
+            bookingId: args['booking_id'] ?? '',
             salonName: args['salon_name'] ?? '',
             date: args['date'] ?? '',
             time: args['time'] ?? '',
             stylistName: args['stylist_name'] ?? 'Any Stylist',
             totalPrice: (args['total_price'] as num?)?.toDouble() ?? 0,
             serviceCount: args['service_count'] ?? 0,
+            totalDuration: (args['total_duration'] as int?) ?? 60,
           ),
         );
       case '/booking-detail':
@@ -199,12 +201,19 @@ class SaloonApp extends StatelessWidget {
         if (args == null) return _notFoundRoute();
         return SlidePageRoute(
           child: SubmitReviewScreen(
-            bookingId: args['booking_id'],
-            salonId: args['salon_id'],
+            bookingId: args['booking_id'] ?? '',
+            salonId: args['salon_id'] ?? '',
             salonName: args['salon_name'],
             stylistId: args['stylist_id'],
+            reviewId: args['review_id'],
+            existingSalonRating: args['existing_salon_rating'] as int?,
+            existingStylistRating: args['existing_stylist_rating'] as int?,
+            existingComment: args['existing_comment'] as String?,
           ),
         );
+
+      case '/my-reviews':
+        return SlidePageRoute(child: const MyReviewsScreen());
 
       case '/favorites':
         return SlidePageRoute(child: const FavoritesScreen());
@@ -342,8 +351,8 @@ class SaloonApp extends StatelessWidget {
         if (args == null) return _notFoundRoute();
         return SlidePageRoute(
           child: PaymentScreen(
-            bookingId: args['booking_id'],
-            amount: (args['amount'] as num).toDouble(),
+            bookingId: args['booking_id'] ?? '',
+            amount: (args['amount'] as num?)?.toDouble() ?? 0,
             salonName: args['salon_name'] ?? 'Salon',
             paymentType: args['payment_type'] ?? 'full',
           ),

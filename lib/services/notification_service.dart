@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 import '../config/api_config.dart';
 import '../core/constants/app_colors.dart';
@@ -213,6 +214,11 @@ class NotificationService {
     } catch (_) {}
   }
 
+  Future<bool> _areNotificationsEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('push_notifications_enabled') ?? true;
+  }
+
   void _handleForegroundMessage(RemoteMessage message) {
     // Refresh unread count
     fetchUnreadCount();
@@ -221,10 +227,18 @@ class NotificationService {
     final body = message.notification?.body ?? '';
     if (title.isEmpty && body.isEmpty) return;
 
+    // Respect user's notification preference
+    _areNotificationsEnabled().then((enabled) {
+      if (!enabled) return;
+      _showNotification(title, body, message.data);
+    });
+  }
+
+  void _showNotification(String title, String body, Map<String, dynamic> data) {
     // Build payload for tap navigation
     String? payload;
-    final bookingId = message.data['booking_id'];
-    final type = message.data['type'] ?? '';
+    final bookingId = data['booking_id'];
+    final type = data['type'] ?? '';
     if (bookingId != null) {
       payload = 'booking_id:$bookingId';
     } else if (type == 'chat') {
@@ -235,7 +249,7 @@ class NotificationService {
     showLocalNotification(title: title, body: body, payload: payload);
 
     // Also show in-app banner
-    _showInAppBanner(title, body, message.data);
+    _showInAppBanner(title, body, data);
   }
 
   void _showInAppBanner(String title, String body, Map<String, dynamic> data) {

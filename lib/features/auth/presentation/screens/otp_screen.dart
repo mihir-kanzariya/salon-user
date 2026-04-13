@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -22,9 +23,34 @@ class _OtpScreenState extends State<OtpScreen> {
   final List<TextEditingController> _controllers = List.generate(_otpLen, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(_otpLen, (_) => FocusNode());
   bool _isVerifying = false;
+  int _resendCountdown = 30;
+  Timer? _resendTimer;
+  int _resendAttempts = 0;
+  static const int _maxResendAttempts = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _startResendTimer();
+  }
+
+  void _startResendTimer() {
+    _resendTimer?.cancel();
+    setState(() => _resendCountdown = 30);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) { timer.cancel(); return; }
+      setState(() {
+        _resendCountdown--;
+        if (_resendCountdown <= 0) {
+          timer.cancel();
+        }
+      });
+    });
+  }
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     for (final c in _controllers) {
       c.dispose();
     }
@@ -72,11 +98,17 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   Future<void> _resendOtp() async {
+    if (_resendAttempts >= _maxResendAttempts) {
+      SnackbarUtils.showError(context, 'Maximum resend attempts reached. Please go back and try again.');
+      return;
+    }
     final provider = context.read<AuthProvider>();
     final success = await provider.sendOtp(provider.phone);
     if (mounted) {
       if (success) {
+        _resendAttempts++;
         SnackbarUtils.showSuccess(context, 'OTP resent');
+        _startResendTimer();
       } else {
         SnackbarUtils.showError(context, provider.error);
       }
@@ -172,8 +204,14 @@ class _OtpScreenState extends State<OtpScreen> {
               const SizedBox(height: 16),
               Center(
                 child: TextButton(
-                  onPressed: _resendOtp,
-                  child: Text(context.watch<LocaleProvider>().tr('resend_otp')),
+                  onPressed: (_resendCountdown > 0 || _resendAttempts >= _maxResendAttempts) ? null : _resendOtp,
+                  child: Text(
+                    _resendAttempts >= _maxResendAttempts
+                        ? 'Max resend attempts reached'
+                        : _resendCountdown > 0
+                            ? 'Resend in ${_resendCountdown}s'
+                            : context.watch<LocaleProvider>().tr('resend_otp'),
+                  ),
                 ),
               ),
             ],

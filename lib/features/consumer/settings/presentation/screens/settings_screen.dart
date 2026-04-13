@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_text_styles.dart';
 import '../../../../../core/i18n/locale_provider.dart';
@@ -13,7 +14,27 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  static const _kNotifPref = 'push_notifications_enabled';
   bool _pushNotifications = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotificationPref();
+  }
+
+  Future<void> _loadNotificationPref() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _pushNotifications = prefs.getBool(_kNotifPref) ?? true;
+    });
+  }
+
+  Future<void> _setNotificationPref(bool value) async {
+    setState(() => _pushNotifications = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kNotifPref, value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: tr('notifications'),
             trailing: Switch.adaptive(
               value: _pushNotifications,
-              onChanged: (v) => setState(() => _pushNotifications = v),
+              onChanged: (v) => _setNotificationPref(v),
               activeTrackColor: AppColors.primary,
               activeThumbColor: AppColors.white,
             ),

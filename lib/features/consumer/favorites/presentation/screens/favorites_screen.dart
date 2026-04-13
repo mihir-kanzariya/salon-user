@@ -50,24 +50,17 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     }
   }
 
-  Future<void> _unfavorite(String salonId, int index) async {
-    final removed = _favorites[index];
-    setState(() {
-      _favorites.removeAt(index);
-    });
-
+  Future<bool> _unfavorite(String salonId) async {
     try {
       await _api.delete('${ApiConfig.favorites}/$salonId');
+      return true;
     } catch (_) {
-      // Restore on failure
-      setState(() {
-        _favorites.insert(index, removed);
-      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to remove from favorites')),
         );
       }
+      return false;
     }
   }
 
@@ -119,7 +112,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           return Dismissible(
             key: Key(salonId),
             direction: DismissDirection.endToStart,
-            onDismissed: (_) => _unfavorite(salonId, index),
+            confirmDismiss: (_) => _unfavorite(salonId),
+            onDismissed: (_) {
+              setState(() => _favorites.removeAt(index));
+            },
             background: Container(
               alignment: Alignment.centerRight,
               padding: const EdgeInsets.only(right: 24),
@@ -153,7 +149,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               genderType: salonData['gender_type'] ?? 'unisex',
               isOpen: true,
               isFavorite: true,
-              onFavorite: () => _unfavorite(salonId, index),
+              onFavorite: () async {
+                final removed = await _unfavorite(salonId);
+                if (removed && mounted) {
+                  setState(() => _favorites.removeAt(index));
+                }
+              },
               onTap: () => Navigator.pushNamed(context, '/salon-detail', arguments: salonId),
             ),
           );

@@ -31,6 +31,7 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
   SalonModel? _salon;
   bool _isLoading = true;
   String _error = '';
+  bool _isFavorite = false;
   final List<String> _selectedServiceIds = [];
 
   late TabController _tabController;
@@ -58,6 +59,7 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
       });
       _salon = await _repo.getSalonDetail(widget.salonId);
       setState(() {
+        _isFavorite = _salon!.isFavorite;
         _isLoading = false;
       });
       _loadReviews();
@@ -74,24 +76,56 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
     }
   }
 
-  Future<void> _loadReviews() async {
+  int _reviewPage = 1;
+  bool _hasMoreReviews = true;
+  bool _isLoadingMoreReviews = false;
+
+  Future<void> _loadReviews({bool loadMore = false}) async {
     if (_salon == null) return;
+    if (loadMore && (_isLoadingMoreReviews || !_hasMoreReviews)) return;
+
     setState(() {
-      _isLoadingReviews = true;
+      if (loadMore) {
+        _isLoadingMoreReviews = true;
+        _reviewPage++;
+      } else {
+        _isLoadingReviews = true;
+        _reviewPage = 1;
+        _hasMoreReviews = true;
+      }
     });
     try {
       final api = ApiService();
       final response = await api.get(
         '/reviews/salon/${_salon!.id}',
+        queryParams: {
+          'page': _reviewPage.toString(),
+          'limit': '10',
+        },
       );
+      final newReviews = (response['data'] as List?) ?? [];
+      final meta = response['meta'];
       setState(() {
-        _reviews = (response['data'] as List?) ?? [];
-        _isLoadingReviews = false;
+        if (loadMore) {
+          _reviews.addAll(newReviews);
+          _isLoadingMoreReviews = false;
+        } else {
+          _reviews = newReviews;
+          _isLoadingReviews = false;
+        }
+        if (meta != null) {
+          _hasMoreReviews = (meta['page'] as num) < (meta['totalPages'] as num);
+        } else {
+          _hasMoreReviews = false;
+        }
       });
     } catch (_) {
-      setState(() {
-        _isLoadingReviews = false;
-      });
+      if (loadMore) {
+        _reviewPage--;
+        setState(() => _isLoadingMoreReviews = false);
+      } else {
+        setState(() => _isLoadingReviews = false);
+      }
     }
   }
 
@@ -127,6 +161,15 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
       }
     }
     return total;
+  }
+
+  Future<void> _toggleFavorite() async {
+    setState(() => _isFavorite = !_isFavorite);
+    try {
+      await _repo.toggleFavorite(widget.salonId);
+    } catch (_) {
+      setState(() => _isFavorite = !_isFavorite);
+    }
   }
 
   void _shareSalon(SalonModel salon) {
@@ -182,6 +225,13 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
               pinned: true,
               backgroundColor: AppColors.primary,
               actions: [
+                IconButton(
+                  icon: Icon(
+                    _isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: _isFavorite ? AppColors.error : AppColors.white,
+                  ),
+                  onPressed: _toggleFavorite,
+                ),
                 IconButton(
                   icon: const Icon(Icons.share_outlined, color: AppColors.white),
                   onPressed: () => _shareSalon(salon),
@@ -807,11 +857,28 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
       );
     }
 
+    // +1 for summary at top, +1 for load-more at bottom
+    final itemCount = _reviews.length + 1 + (_hasMoreReviews ? 1 : 0);
+
     return ListView.builder(
       padding: const EdgeInsets.all(14),
-      itemCount: _reviews.length + 1,
+      itemCount: itemCount,
       itemBuilder: (context, index) {
         if (index == 0) return _buildReviewSummary();
+        if (index == _reviews.length + 1) {
+          // Load more indicator
+          if (!_isLoadingMoreReviews) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _loadReviews(loadMore: true);
+            });
+          }
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+            ),
+          );
+        }
         final reviewIndex = index - 1;
         final review = _reviews[reviewIndex];
         final rating = ((review['salon_rating'] ?? review['rating']) as num?)?.toInt() ?? 0;

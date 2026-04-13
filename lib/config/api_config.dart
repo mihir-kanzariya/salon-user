@@ -49,6 +49,11 @@ class ApiConfig {
   static String salonWithdrawals(String salonId) => '/payments/salon/$salonId/withdrawals';
   static String requestWithdrawal(String salonId) => '/payments/salon/$salonId/withdraw';
 
+  // Search
+  static const String searchSuggestions = '/salons/search/suggestions';
+  static const String searchTrending = '/salons/search/trending';
+  static const String searchTrack = '/salons/search/track';
+
   // Reviews
   static const String reviews = '/reviews';
 

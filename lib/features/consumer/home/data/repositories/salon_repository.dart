@@ -45,6 +45,7 @@ class SalonRepository {
     double radius = 10,
     String? genderType,
     String? search,
+    String sortBy = 'distance',
     int page = 1,
     int limit = AppConstants.paginationLimit,
   }) async {
@@ -57,6 +58,7 @@ class SalonRepository {
     };
     if (genderType != null) params['gender_type'] = genderType;
     if (search != null && search.isNotEmpty) params['search'] = search;
+    if (sortBy != 'distance') params['sort'] = sortBy;
 
     final response = await _api.get(ApiConfig.nearbySalons, queryParams: params, auth: false);
     final list = (response['data'] as List?) ?? [];
@@ -71,7 +73,7 @@ class SalonRepository {
   }
 
   Future<SalonModel> getSalonDetail(String salonId) async {
-    final response = await _api.get('${ApiConfig.salonDetail}/$salonId', auth: false);
+    final response = await _api.get('${ApiConfig.salonDetail}/$salonId');
     return SalonModel.fromJson(response['data']);
   }
 
@@ -84,5 +86,21 @@ class SalonRepository {
     final response = await _api.get(ApiConfig.favorites);
     final list = (response['data'] as List?) ?? [];
     return list.map((e) => SalonModel.fromJson(e)).toList();
+  }
+
+  Future<Map<String, dynamic>> getSearchSuggestions(String query) async {
+    final response = await _api.get(ApiConfig.searchSuggestions, queryParams: {'q': query}, auth: false);
+    return response['data'] ?? {};
+  }
+
+  Future<Map<String, dynamic>> getTrending(double lat, double lng) async {
+    final response = await _api.get(ApiConfig.searchTrending, queryParams: {'lat': lat.toString(), 'lng': lng.toString()}, auth: false);
+    return response['data'] ?? {};
+  }
+
+  Future<void> trackSearch(String query, int resultCount) async {
+    try {
+      await _api.post(ApiConfig.searchTrack, body: {'query': query, 'result_count': resultCount});
+    } catch (_) {} // Don't fail for analytics
   }
 }

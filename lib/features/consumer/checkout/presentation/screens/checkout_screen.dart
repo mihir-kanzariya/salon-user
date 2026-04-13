@@ -182,6 +182,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'stylist_name': widget.stylistName,
         'total_price': _total,
         'service_count': widget.services.length,
+        'total_duration': widget.services.fold<int>(0, (sum, s) => sum + ((s['duration_minutes'] as int?) ?? 0)),
       });
     } catch (_) {
       if (mounted) SnackbarUtils.showError(context, 'Payment received but verification failed. Your booking will be confirmed shortly.');

@@ -22,6 +22,7 @@ class SalonModel {
   final List<dynamic>? members;
   final double? minPrice;
   final double? maxPrice;
+  final bool isFavorite;
 
   SalonModel({
     required this.id,
@@ -47,7 +48,9 @@ class SalonModel {
     this.members,
     this.minPrice,
     this.maxPrice,
-  });
+    this.isFavorite = false,
+    int? stylistCount,
+  }) : _stylistCount = stylistCount;
   
   factory SalonModel.fromJson(Map<String, dynamic> json) {
     return SalonModel(
@@ -66,7 +69,7 @@ class SalonModel {
       operatingHours: json['operating_hours'] ?? {},
       bookingSettings: json['booking_settings'] ?? {},
       ratingAvg: double.tryParse(json['rating_avg']?.toString() ?? '0') ?? 0,
-      ratingCount: json['rating_count'] ?? 0,
+      ratingCount: int.tryParse(json['rating_count']?.toString() ?? '0') ?? 0,
       isActive: json['is_active'] ?? true,
       distance: json['distance'] != null ? double.tryParse(json['distance'].toString()) : null,
       owner: json['owner'],
@@ -74,6 +77,8 @@ class SalonModel {
       members: json['members'],
       minPrice: double.tryParse(json['min_price']?.toString() ?? ''),
       maxPrice: double.tryParse(json['max_price']?.toString() ?? ''),
+      stylistCount: int.tryParse(json['stylist_count']?.toString() ?? ''),
+      isFavorite: json['is_favorited'] == true || json['is_favorited'] == 1,
     );
   }
   
@@ -100,4 +105,33 @@ class SalonModel {
     if (distance! < 1) return '${(distance! * 1000).round()}m';
     return '${distance!.toStringAsFixed(1)} km';
   }
+
+  /// Returns today's closing time in 12h format (e.g. "9:00 PM"), or null if closed.
+  String? get closingTimeToday {
+    final now = DateTime.now();
+    final dayName = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][now.weekday - 1];
+    final dayHours = operatingHours[dayName];
+    if (dayHours == null) return null;
+    final isClosed = dayHours['is_closed'] == true || dayHours['is_open'] == false;
+    if (isClosed) return null;
+    final closeTime = dayHours['close'] as String?;
+    if (closeTime == null) return null;
+    // Convert 24h "21:00" → "9:00 PM"
+    final parts = closeTime.split(':');
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0;
+    final period = h >= 12 ? 'PM' : 'AM';
+    final h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+    return m > 0 ? '$h12:${m.toString().padLeft(2, '0')} $period' : '$h12 $period';
+  }
+
+  /// Number of stylists in this salon (from API computed field or members list).
+  int get stylistCountValue {
+    if (_stylistCount != null) return _stylistCount;
+    return members?.where((m) {
+      final role = (m is Map) ? m['role']?.toString() : null;
+      return role == 'stylist';
+    }).length ?? 0;
+  }
+  final int? _stylistCount;
 }

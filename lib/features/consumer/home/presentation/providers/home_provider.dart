@@ -31,6 +31,12 @@ class HomeProvider extends ChangeNotifier {
   String _searchQuery = '';
   String get searchQuery => _searchQuery;
 
+  String _sortBy = 'distance';
+  String get sortBy => _sortBy;
+
+  Set<String> _favoritedIds = {};
+  bool isFavorited(String salonId) => _favoritedIds.contains(salonId);
+
   Timer? _searchDebounce;
 
   double _userLat = 23.0225;
@@ -55,6 +61,11 @@ class HomeProvider extends ChangeNotifier {
     });
   }
 
+  void setSortBy(String sort) {
+    _sortBy = sort;
+    fetchSalons();
+  }
+
   @override
   void dispose() {
     _searchDebounce?.cancel();
@@ -74,11 +85,15 @@ class HomeProvider extends ChangeNotifier {
         lng: _userLng,
         genderType: _selectedGenderFilter,
         search: _searchQuery.isNotEmpty ? _searchQuery : null,
+        sortBy: _sortBy,
         page: 1,
       );
 
       _salons = result.items;
       _hasMore = result.hasMore;
+      _favoritedIds = {
+        for (final s in _salons) if (s.isFavorite) s.id,
+      };
       _isLoading = false;
       notifyListeners();
     } on ApiException catch (e) {
@@ -105,6 +120,7 @@ class HomeProvider extends ChangeNotifier {
         lng: _userLng,
         genderType: _selectedGenderFilter,
         search: _searchQuery.isNotEmpty ? _searchQuery : null,
+        sortBy: _sortBy,
         page: _currentPage,
       );
 
@@ -115,6 +131,29 @@ class HomeProvider extends ChangeNotifier {
     } catch (_) {
       _currentPage--;
       _isLoadingMore = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> toggleFavorite(String salonId) async {
+    // Optimistic toggle
+    final wasFavorited = _favoritedIds.contains(salonId);
+    if (wasFavorited) {
+      _favoritedIds.remove(salonId);
+    } else {
+      _favoritedIds.add(salonId);
+    }
+    notifyListeners();
+
+    try {
+      await _repo.toggleFavorite(salonId);
+    } catch (_) {
+      // Revert on error
+      if (wasFavorited) {
+        _favoritedIds.add(salonId);
+      } else {
+        _favoritedIds.remove(salonId);
+      }
       notifyListeners();
     }
   }

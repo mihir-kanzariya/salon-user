@@ -22,6 +22,7 @@ class AppRoutes {
   static const String bookingSuccess = '/booking-success';
   static const String bookingDetail = '/booking-detail';
   static const String submitReview = '/submit-review';
+  static const String myReviews = '/my-reviews';
   static const String favorites = '/favorites';
   static const String search = '/search';
   static const String editProfile = '/edit-profile';

@@ -1,11 +1,10 @@
-import 'package:provider/provider.dart';
-import '../../../../../core/i18n/locale_provider.dart';
-import '../../../../../core/widgets/language_toggle.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import '../../../../../core/i18n/locale_provider.dart';
+import '../../../../../core/widgets/language_toggle.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/widgets/salon_card.dart';
 import '../../../../../core/widgets/loading_widget.dart';
@@ -146,19 +145,51 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Container(
                     color: AppColors.primary,
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (value) => context.read<HomeProvider>().setSearchQuery(value),
-                      style: const TextStyle(color: AppColors.textPrimary),
-                      decoration: InputDecoration(
-                        hintText: 'Search salons, services...',
-                        prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
-                        filled: true,
-                        fillColor: AppColors.white,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                        border: OutlineInputBorder(
+                    child: GestureDetector(
+                      onTap: () async {
+                        final result = await Navigator.pushNamed(context, '/search');
+                        if (result is Map<String, dynamic> && result['type'] == 'service' && mounted) {
+                          final query = result['query'] as String? ?? '';
+                          if (query.isNotEmpty) {
+                            _searchController.text = query;
+                            context.read<HomeProvider>().setSearchQuery(query);
+                          }
+                        }
+                      },
+                      child: Container(
+                        height: 48,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.search, color: AppColors.textMuted),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _searchController.text.isNotEmpty ? _searchController.text : 'Search salons, services...',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: _searchController.text.isNotEmpty ? AppColors.textPrimary : AppColors.textMuted,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (_searchController.text.isNotEmpty)
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() => _searchController.clear());
+                                  context.read<HomeProvider>().setSearchQuery('');
+                                },
+                                behavior: HitTestBehavior.opaque,
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4),
+                                  child: Icon(Icons.clear, color: AppColors.textMuted, size: 20),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
@@ -198,6 +229,38 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+
+                // Sort options
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.sort, size: 16, color: AppColors.textSecondary),
+                        const SizedBox(width: 8),
+                        _FilterChip(
+                          label: 'Nearest',
+                          isSelected: provider.sortBy == 'distance',
+                          onTap: () => provider.setSortBy('distance'),
+                        ),
+                        const SizedBox(width: 8),
+                        _FilterChip(
+                          label: 'Top Rated',
+                          isSelected: provider.sortBy == 'rating',
+                          onTap: () => provider.setSortBy('rating'),
+                        ),
+                        const SizedBox(width: 8),
+                        _FilterChip(
+                          label: 'Price: Low',
+                          isSelected: provider.sortBy == 'price_low',
+                          onTap: () => provider.setSortBy('price_low'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
                 // Category browsing section — scrolls away
                 SliverToBoxAdapter(
@@ -275,6 +338,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           isOpen: salon.isCurrentlyOpen,
                           minPrice: salon.minPrice,
                           maxPrice: salon.maxPrice,
+                          closingTime: salon.closingTimeToday,
+                          stylistCount: salon.stylistCountValue,
+                          amenities: salon.amenities,
+                          gallery: salon.gallery,
+                          isFavorite: provider.isFavorited(salon.id),
+                          onFavorite: () => provider.toggleFavorite(salon.id),
                           onTap: () => Navigator.pushNamed(context, '/salon-detail', arguments: salon.id),
                         );
                       },

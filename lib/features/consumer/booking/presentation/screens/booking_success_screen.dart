@@ -15,6 +15,7 @@ class BookingSuccessScreen extends StatefulWidget {
   final String stylistName;
   final double totalPrice;
   final int serviceCount;
+  final int totalDuration; // in minutes
 
   const BookingSuccessScreen({
     super.key,
@@ -25,6 +26,7 @@ class BookingSuccessScreen extends StatefulWidget {
     required this.stylistName,
     required this.totalPrice,
     required this.serviceCount,
+    this.totalDuration = 60,
   });
 
   @override
@@ -213,7 +215,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Single
       final dt = DateTime.parse(widget.date);
       final timeParts = widget.time.split(':');
       final startDt = DateTime(dt.year, dt.month, dt.day, int.parse(timeParts[0]), int.parse(timeParts[1]));
-      final endDt = startDt.add(const Duration(hours: 1)); // Approximate
+      final endDt = startDt.add(Duration(minutes: widget.totalDuration > 0 ? widget.totalDuration : 60));
 
       final title = Uri.encodeComponent('Salon Appointment - ${widget.salonName}');
       final details = Uri.encodeComponent('Stylist: ${widget.stylistName}\nServices: ${widget.serviceCount} service(s)');

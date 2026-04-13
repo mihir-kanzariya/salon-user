@@ -29,6 +29,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   bool _isCancelling = false;
   bool _hasError = false;
   bool _paymentSheetShown = false;
+  int _awaitingPaymentRetries = 0;
+  static const int _maxAwaitingPaymentRetries = 10;
 
   @override
   void initState() {
@@ -49,6 +51,17 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       _booking = response['data'];
 
       setState(() => _isLoading = false);
+
+      // If booking is still awaiting_payment, auto-retry after 2s (payment may still be processing)
+      final status = (_booking?['status'] ?? '').toString().toLowerCase();
+      if (status == 'awaiting_payment' && mounted && _awaitingPaymentRetries < _maxAwaitingPaymentRetries) {
+        _awaitingPaymentRetries++;
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) _loadBooking();
+        });
+      } else if (status != 'awaiting_payment') {
+        _awaitingPaymentRetries = 0;
+      }
 
       // F.3: Auto-show payment prompt for completed + unpaid bookings
       _checkPaymentPrompt();
@@ -73,6 +86,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         return AppColors.error;
       case 'in_progress':
         return AppColors.accent;
+      case 'awaiting_payment':
+        return AppColors.warning;
       default:
         return AppColors.textMuted;
     }
@@ -88,6 +103,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       case 'no_show':
         return AppColors.errorLight;
       case 'in_progress':
+        return AppColors.warningLight;
+      case 'awaiting_payment':
         return AppColors.warningLight;
       default:
         return AppColors.softSurface;
@@ -108,6 +125,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         return locale.tr('status_in_progress');
       case 'pending':
         return locale.tr('status_pending');
+      case 'awaiting_payment':
+        return 'Processing Payment';
       default:
         return status.replaceAll('_', ' ').toUpperCase();
     }
@@ -124,6 +143,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         return Icons.cancel_outlined;
       case 'in_progress':
         return Icons.hourglass_top;
+      case 'awaiting_payment':
+        return Icons.payment;
       default:
         return Icons.schedule;
     }
@@ -287,10 +308,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       context,
       '/submit-review',
       arguments: {
-        'bookingId': widget.bookingId,
-        'salonId': salon?['_id'] ?? salon?['id'] ?? '',
-        'salonName': salon?['name'],
-        'stylistId': stylist?['_id'] ?? stylist?['id'],
+        'booking_id': widget.bookingId,
+        'salon_id': salon?['_id'] ?? salon?['id'] ?? '',
+        'salon_name': salon?['name'],
+        'stylist_id': stylist?['_id'] ?? stylist?['id'],
       },
     );
 
