@@ -197,6 +197,8 @@ class _BookingScreenState extends State<BookingScreen> {
         : <String, dynamic>{};
     final slotType = selectedSlot['slotType'] as String? ?? 'regular';
     final discount = (selectedSlot['discount'] as num?)?.toDouble() ?? 0;
+    final discountType = selectedSlot['discountType'] as String? ?? 'percentage';
+    final discountAmount = (selectedSlot['discountAmount'] as num?)?.toDouble() ?? discount;
     final finalPrice = (selectedSlot['finalPrice'] as num?)?.toDouble() ?? widget.totalPrice;
     final formattedDate = DateFormat('EEE, d MMM yyyy').format(_selectedDate);
 
@@ -256,7 +258,12 @@ class _BookingScreenState extends State<BookingScreen> {
                     const SizedBox(width: 4),
                     Text(locale.tr('smart_discount'), style: AppTextStyles.bodyMedium.copyWith(color: AppColors.success)),
                   ]),
-                  Text('-${discount.toStringAsFixed(0)}%', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.success, fontWeight: FontWeight.w600)),
+                  Text(
+                    discountType == 'flat'
+                        ? '-\u20B9${discountAmount.toStringAsFixed(0)}'
+                        : '-${discount.toStringAsFixed(0)}%',
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.success, fontWeight: FontWeight.w600),
+                  ),
                 ]),
               ],
               const Divider(height: 16),
@@ -1042,7 +1049,9 @@ class _BookingScreenState extends State<BookingScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 1),
                         child: Text(
-                          'Save ${discount.toStringAsFixed(0)}%',
+                          (slot['discountType'] == 'flat')
+                              ? 'Save \u20B9${(slot['discountAmount'] as num? ?? discount).toStringAsFixed(0)}'
+                              : 'Save ${discount.toStringAsFixed(0)}%',
                           style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -1366,7 +1375,9 @@ class _BookingScreenState extends State<BookingScreen> {
               Padding(
                 padding: const EdgeInsets.only(top: 1),
                 child: Text(
-                  'Save ${discount.toStringAsFixed(0)}%',
+                  (slot['discountType'] == 'flat')
+                      ? 'Save \u20B9${(slot['discountAmount'] as num? ?? discount).toStringAsFixed(0)}'
+                      : 'Save ${discount.toStringAsFixed(0)}%',
                   style: const TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w600,
@@ -1524,7 +1535,14 @@ class _BookingScreenState extends State<BookingScreen> {
         final fp = (s['finalPrice'] as num?)?.toDouble();
         if ((slotType == 'smart' || slotType == 'perfect_fit') && fp != null && fp < widget.totalPrice) {
           displayPrice = fp;
-          smartLabel = locale.tr('smart_discount');
+          final dt = s['discountType'] as String? ?? 'percentage';
+          final disc = (s['discount'] as num?)?.toDouble() ?? 0;
+          final discAmt = (s['discountAmount'] as num?)?.toDouble() ?? disc;
+          if (dt == 'flat') {
+            smartLabel = '${locale.tr('smart_discount')} (\u20B9${discAmt.toStringAsFixed(0)})';
+          } else {
+            smartLabel = '${locale.tr('smart_discount')} (${disc.toStringAsFixed(0)}%)';
+          }
         }
       }
     }

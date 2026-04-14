@@ -77,6 +77,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'booking_cancelled':
       case 'booking_reminder':
       case 'booking_created':
+      case 'booking_in_progress':
       case 'booking_completed':
         if (referenceId != null) {
           Navigator.pushNamed(context, '/booking-detail', arguments: referenceId);
@@ -105,6 +106,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'booking_confirmed': return Icons.check_circle;
       case 'booking_cancelled': return Icons.cancel;
       case 'booking_reminder': return Icons.alarm;
+      case 'booking_in_progress': return Icons.play_circle_outline;
       case 'booking_completed': return Icons.done_all;
       case 'chat_message': return Icons.chat_bubble;
       case 'payment_received': return Icons.payment;
