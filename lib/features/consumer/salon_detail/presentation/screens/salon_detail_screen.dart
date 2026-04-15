@@ -154,6 +154,22 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
     return total;
   }
 
+  /// Returns true if any selected service has a price range (stylist-specific pricing).
+  bool get _hasVariablePricing {
+    if (_salon?.services == null) return false;
+    for (final s in _salon!.services!) {
+      if (_selectedServiceIds.contains(s['id'])) {
+        final priceRange = s['price_range'] as Map<String, dynamic>?;
+        if (priceRange != null) {
+          final min = double.tryParse(priceRange['min']?.toString() ?? '') ?? 0;
+          final max = double.tryParse(priceRange['max']?.toString() ?? '') ?? 0;
+          if (min != max) return true;
+        }
+      }
+    }
+    return false;
+  }
+
   int get _totalDuration {
     if (_salon?.services == null) return 0;
     int total = 0;
@@ -404,10 +420,24 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
                           '${_selectedServiceIds.length} service${_selectedServiceIds.length > 1 ? 's' : ''} | $_totalDuration min',
                           style: AppTextStyles.caption,
                         ),
-                        Text(
-                          '\u20B9${_totalPrice.toStringAsFixed(0)}',
-                          style: AppTextStyles.h3
-                              .copyWith(color: AppColors.primary),
+                        Row(
+                          children: [
+                            if (_hasVariablePricing)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: Text(
+                                  'from',
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            Text(
+                              '\u20B9${_totalPrice.toStringAsFixed(0)}',
+                              style: AppTextStyles.h3
+                                  .copyWith(color: AppColors.primary),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -416,6 +446,10 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
                       child: AppButton(
                         text: context.watch<LocaleProvider>().tr('book_now'),
                         onPressed: () {
+                          // Build selected services list for the booking screen
+                          final selectedServices = (salon.services ?? [])
+                              .where((s) => _selectedServiceIds.contains(s['id']))
+                              .toList();
                           Navigator.pushNamed(context, '/booking', arguments: {
                             'salon_id': salon.id,
                             'service_ids': _selectedServiceIds,
@@ -425,6 +459,7 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
                             'members': (salon.members ?? [])
                                 .where((m) => m['role'] == 'stylist')
                                 .toList(),
+                            'services': selectedServices,
                           });
                         },
                       ),
@@ -468,6 +503,17 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
           service['name'] ?? '',
         );
 
+        // Stylist-specific pricing: check for price_range and stylist_count
+        final priceRange = service['price_range'] as Map<String, dynamic>?;
+        final minPrice = priceRange != null
+            ? (double.tryParse(priceRange['min']?.toString() ?? '') ?? price)
+            : price;
+        final maxPrice = priceRange != null
+            ? (double.tryParse(priceRange['max']?.toString() ?? '') ?? price)
+            : price;
+        final hasPriceRange = priceRange != null && minPrice != maxPrice;
+        final stylistCount = (service['stylist_count'] as int?) ?? 0;
+
         return GestureDetector(
           onTap: () => _toggleService(serviceId),
           child: Container(
@@ -509,7 +555,7 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
                 ),
                 const SizedBox(width: 10),
 
-                // Name + description + duration
+                // Name + description + duration + stylist info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,31 +571,62 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      Text(
-                        '$durationMinutes min',
-                        style: AppTextStyles.caption,
+                      Row(
+                        children: [
+                          Text(
+                            '$durationMinutes min',
+                            style: AppTextStyles.caption,
+                          ),
+                          if (stylistCount > 0) ...[
+                            Text(
+                              '  \u00B7  ',
+                              style: AppTextStyles.caption,
+                            ),
+                            Text(
+                              '$stylistCount stylist${stylistCount > 1 ? 's' : ''}',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
 
-                // Price column
+                // Price column — show "from ₹X" when price range exists
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      '\u20B9${price.toStringAsFixed(0)}',
-                      style: AppTextStyles.labelLarge
-                          .copyWith(color: AppColors.primary),
-                    ),
-                    if (hasDiscount)
+                    if (hasPriceRange) ...[
                       Text(
-                        '\u20B9${originalPrice.toStringAsFixed(0)}',
+                        'from',
                         style: AppTextStyles.caption.copyWith(
-                          decoration: TextDecoration.lineThrough,
+                          fontSize: 10,
+                          color: AppColors.textSecondary,
                         ),
                       ),
+                      Text(
+                        '\u20B9${minPrice.toStringAsFixed(0)}',
+                        style: AppTextStyles.labelLarge
+                            .copyWith(color: AppColors.primary),
+                      ),
+                    ] else ...[
+                      Text(
+                        '\u20B9${price.toStringAsFixed(0)}',
+                        style: AppTextStyles.labelLarge
+                            .copyWith(color: AppColors.primary),
+                      ),
+                      if (hasDiscount)
+                        Text(
+                          '\u20B9${originalPrice.toStringAsFixed(0)}',
+                          style: AppTextStyles.caption.copyWith(
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                    ],
                   ],
                 ),
               ],

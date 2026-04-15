@@ -24,6 +24,7 @@ class BookingScreen extends StatefulWidget {
   final double totalPrice;
   final String salonName;
   final List<dynamic> members;
+  final List<dynamic> services; // Selected service objects with name, price, duration
 
   const BookingScreen({
     super.key,
@@ -33,6 +34,7 @@ class BookingScreen extends StatefulWidget {
     required this.totalPrice,
     this.salonName = '',
     this.members = const [],
+    this.services = const [],
   });
 
   @override
@@ -60,12 +62,27 @@ class _BookingScreenState extends State<BookingScreen> {
   Timer? _slotRefreshTimer;
   bool _preciseMode = false; // false = 30-min intervals, true = 15-min (all slots)
 
+  // --- Stylist-specific pricing state (Tasks 2/3/4) ---
+  // Map<serviceId, List<{member_id, member_name, price, duration_minutes}>>
+  Map<String, List<Map<String, dynamic>>> _stylistServicePricing = {};
+  bool _isLoadingStylistPricing = false;
+  // Effective price/duration based on selected stylist (falls back to widget values)
+  double _effectivePrice = 0;
+  int _effectiveDuration = 0;
+  // Per-service breakdown for order summary: [{name, price, duration}]
+  List<Map<String, dynamic>> _serviceBreakdown = [];
+
   @override
   void initState() {
     super.initState();
+    _effectivePrice = widget.totalPrice;
+    _effectiveDuration = widget.totalDuration;
     _initRazorpay();
     _loadSalonSettings();
     _loadSlots();
+    _loadStylistPricing();
+    // Build initial service breakdown from widget.services
+    _recalculateEffectivePricing();
     _slotRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) _loadSlots(silent: true);
     });
@@ -92,6 +109,210 @@ class _BookingScreenState extends State<BookingScreen> {
     } catch (_) {}
   }
 
+  /// Fetch per-stylist pricing for each selected service.
+  /// Endpoint: GET /services/{serviceId}/stylists
+  /// Falls back gracefully if the endpoint doesn't exist yet.
+  Future<void> _loadStylistPricing() async {
+    if (widget.serviceIds.isEmpty) return;
+    setState(() => _isLoadingStylistPricing = true);
+    final api = ApiService();
+    final Map<String, List<Map<String, dynamic>>> result = {};
+
+    for (final serviceId in widget.serviceIds) {
+      try {
+        final response = await api.get('${ApiConfig.services}/$serviceId/stylists');
+        final stylists = (response['data'] as List?)
+            ?.map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        if (stylists != null) {
+          result[serviceId] = stylists;
+        }
+      } catch (_) {
+        // Endpoint may not exist yet — continue without stylist pricing
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _stylistServicePricing = result;
+        _isLoadingStylistPricing = false;
+      });
+      _recalculateEffectivePricing();
+    }
+  }
+
+  /// Recalculate effective price & duration based on selected stylist.
+  /// If stylist-specific pricing data isn't available, falls back to widget values.
+  void _recalculateEffectivePricing() {
+    if (_stylistServicePricing.isEmpty || _selectedStylistId == null) {
+      // No stylist-specific data or "Any Stylist" selected — use base values
+      // Still build breakdown from widget.services for the order summary
+      final List<Map<String, dynamic>> breakdown = [];
+      for (final service in widget.services) {
+        if (service is Map<String, dynamic>) {
+          final price = double.tryParse(
+              (service['discounted_price'] ?? service['price'])?.toString() ?? '0') ?? 0;
+          final duration = (service['duration_minutes'] as int?) ?? 0;
+          breakdown.add({
+            'name': service['name'] ?? '',
+            'price': price,
+            'duration': duration,
+          });
+        }
+      }
+      setState(() {
+        _effectivePrice = widget.totalPrice;
+        _effectiveDuration = widget.totalDuration;
+        _serviceBreakdown = breakdown;
+      });
+      return;
+    }
+
+    double totalPrice = 0;
+    int totalDuration = 0;
+    final List<Map<String, dynamic>> breakdown = [];
+    bool hasStylistData = false;
+
+    for (final serviceId in widget.serviceIds) {
+      final stylistList = _stylistServicePricing[serviceId];
+      if (stylistList == null) {
+        // Fall back to widget.services for this service
+        final widgetService = widget.services.firstWhere(
+          (s) => s is Map<String, dynamic> && s['id'] == serviceId,
+          orElse: () => null,
+        );
+        if (widgetService is Map<String, dynamic>) {
+          final price = double.tryParse(
+              (widgetService['discounted_price'] ?? widgetService['price'])?.toString() ?? '0') ?? 0;
+          final duration = (widgetService['duration_minutes'] as int?) ?? 0;
+          totalPrice += price;
+          totalDuration += duration;
+          breakdown.add({
+            'name': widgetService['name'] ?? '',
+            'price': price,
+            'duration': duration,
+          });
+        }
+        continue;
+      }
+
+      final match = stylistList.where((s) =>
+          s['member_id']?.toString() == _selectedStylistId).toList();
+
+      if (match.isNotEmpty) {
+        hasStylistData = true;
+        final stylistData = match.first;
+        final price = (stylistData['price'] as num?)?.toDouble() ?? 0;
+        final duration = (stylistData['duration_minutes'] as num?)?.toInt() ?? 0;
+        final serviceName = stylistData['service_name']?.toString() ?? '';
+        totalPrice += price;
+        totalDuration += duration;
+        breakdown.add({
+          'name': serviceName,
+          'price': price,
+          'duration': duration,
+        });
+      } else {
+        // Stylist doesn't offer this service — fall back to base price
+        final widgetService = widget.services.firstWhere(
+          (s) => s is Map<String, dynamic> && s['id'] == serviceId,
+          orElse: () => null,
+        );
+        if (widgetService is Map<String, dynamic>) {
+          final price = double.tryParse(
+              (widgetService['discounted_price'] ?? widgetService['price'])?.toString() ?? '0') ?? 0;
+          final duration = (widgetService['duration_minutes'] as int?) ?? 0;
+          totalPrice += price;
+          totalDuration += duration;
+          breakdown.add({
+            'name': widgetService['name'] ?? '',
+            'price': price,
+            'duration': duration,
+          });
+        }
+      }
+    }
+
+    setState(() {
+      if (hasStylistData && totalPrice > 0) {
+        _effectivePrice = totalPrice;
+        _effectiveDuration = totalDuration > 0 ? totalDuration : widget.totalDuration;
+        _serviceBreakdown = breakdown;
+      } else if (totalPrice > 0) {
+        _effectivePrice = totalPrice;
+        _effectiveDuration = totalDuration > 0 ? totalDuration : widget.totalDuration;
+        _serviceBreakdown = breakdown;
+      } else {
+        _effectivePrice = widget.totalPrice;
+        _effectiveDuration = widget.totalDuration;
+        _serviceBreakdown = breakdown;
+      }
+    });
+  }
+
+  /// Get the total price for a specific stylist across all selected services.
+  /// Returns null if data is not available for this stylist.
+  double? _getStylistTotalPrice(String? stylistId) {
+    if (_stylistServicePricing.isEmpty) return null;
+    if (stylistId == null) {
+      // "Any Stylist" — show price range if available
+      return null;
+    }
+    double total = 0;
+    bool hasData = false;
+    for (final serviceId in widget.serviceIds) {
+      final stylistList = _stylistServicePricing[serviceId];
+      if (stylistList == null) continue;
+      final match = stylistList.where((s) =>
+          s['member_id']?.toString() == stylistId).toList();
+      if (match.isNotEmpty) {
+        hasData = true;
+        total += (match.first['price'] as num?)?.toDouble() ?? 0;
+      }
+    }
+    return hasData ? total : null;
+  }
+
+  /// Get the price range across all stylists for "Any Stylist" display.
+  /// Returns {min, max} or null if no data.
+  Map<String, double>? _getAnyStylistPriceRange() {
+    if (_stylistServicePricing.isEmpty) return null;
+    // Collect per-stylist totals
+    final Map<String, double> stylistTotals = {};
+    for (final serviceId in widget.serviceIds) {
+      final stylistList = _stylistServicePricing[serviceId];
+      if (stylistList == null) continue;
+      for (final entry in stylistList) {
+        final id = entry['member_id']?.toString() ?? '';
+        final price = (entry['price'] as num?)?.toDouble() ?? 0;
+        stylistTotals[id] = (stylistTotals[id] ?? 0) + price;
+      }
+    }
+    if (stylistTotals.isEmpty) return null;
+    final prices = stylistTotals.values.toList();
+    prices.sort();
+    return {'min': prices.first, 'max': prices.last};
+  }
+
+  /// Check whether a stylist offers all selected services.
+  /// Returns the name of a missing service, or null if all are offered.
+  String? _stylistMissingService(String stylistId) {
+    for (final serviceId in widget.serviceIds) {
+      final stylistList = _stylistServicePricing[serviceId];
+      if (stylistList == null) continue;
+      final match = stylistList.where((s) =>
+          s['member_id']?.toString() == stylistId).toList();
+      if (match.isEmpty) {
+        // Find the service name from the pricing data of other stylists
+        final anyEntry = stylistList.isNotEmpty
+            ? (stylistList.first['service_name']?.toString() ?? 'a service')
+            : 'a service';
+        return anyEntry;
+      }
+    }
+    return null;
+  }
+
   Future<void> _loadSlots({bool silent = false}) async {
     try {
       if (!silent) {
@@ -105,14 +326,16 @@ class _BookingScreenState extends State<BookingScreen> {
       }
 
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      final duration = _effectiveDuration > 0 ? _effectiveDuration : widget.totalDuration;
+      final price = _effectivePrice > 0 ? _effectivePrice : widget.totalPrice;
 
       // Try smart-slots API first; fall back to regular slots on failure
       try {
         final smartData = await _repo.getSmartSlots(
           salonId: widget.salonId,
           date: dateStr,
-          duration: widget.totalDuration,
-          price: widget.totalPrice,
+          duration: duration,
+          price: price,
           stylistMemberId: _selectedStylistId,
           displayInterval: _preciseMode ? null : 30,
         );
@@ -128,7 +351,7 @@ class _BookingScreenState extends State<BookingScreen> {
         _slots = await _repo.getAvailableSlots(
           salonId: widget.salonId,
           date: dateStr,
-          duration: widget.totalDuration,
+          duration: duration,
           stylistMemberId: _selectedStylistId,
         );
         _smartSlots = [];
@@ -199,7 +422,24 @@ class _BookingScreenState extends State<BookingScreen> {
     final discount = (selectedSlot['discount'] as num?)?.toDouble() ?? 0;
     final discountType = selectedSlot['discountType'] as String? ?? 'percentage';
     final discountAmount = (selectedSlot['discountAmount'] as num?)?.toDouble() ?? discount;
-    final finalPrice = (selectedSlot['finalPrice'] as num?)?.toDouble() ?? widget.totalPrice;
+    final basePrice = _effectivePrice > 0 ? _effectivePrice : widget.totalPrice;
+    final effectiveDuration = _effectiveDuration > 0 ? _effectiveDuration : widget.totalDuration;
+    // Apply smart discount to the effective (stylist-specific) price
+    double finalPrice;
+    if (selectedSlot.isNotEmpty && (selectedSlot['finalPrice'] as num?) != null) {
+      // If we have stylist-specific pricing, recalculate the smart discount on it
+      if (_serviceBreakdown.isNotEmpty && discount > 0) {
+        if (discountType == 'flat') {
+          finalPrice = basePrice - discountAmount;
+        } else {
+          finalPrice = basePrice * (1 - discount / 100);
+        }
+      } else {
+        finalPrice = (selectedSlot['finalPrice'] as num?)?.toDouble() ?? basePrice;
+      }
+    } else {
+      finalPrice = basePrice;
+    }
     final formattedDate = DateFormat('EEE, d MMM yyyy').format(_selectedDate);
 
     showModalBottomSheet(
@@ -234,7 +474,7 @@ class _BookingScreenState extends State<BookingScreen> {
               Row(children: [
                 const Icon(Icons.access_time, size: 16, color: AppColors.textMuted),
                 const SizedBox(width: 8),
-                Text('$_selectedTime  •  ${widget.totalDuration} min', style: AppTextStyles.bodyMedium),
+                Text('$_selectedTime  \u2022  $effectiveDuration min', style: AppTextStyles.bodyMedium),
               ]),
               const SizedBox(height: 4),
               Row(children: [
@@ -243,12 +483,36 @@ class _BookingScreenState extends State<BookingScreen> {
                 Text(_selectedStylistName ?? locale.tr('any_stylist'), style: AppTextStyles.bodyMedium),
               ]),
               const Divider(height: 24),
-              // Services
+              // Services — per-service line items when stylist pricing is available
               Text('${locale.tr('services')} (${widget.serviceIds.length})', style: AppTextStyles.labelLarge),
               const SizedBox(height: 8),
+              if (_serviceBreakdown.isNotEmpty) ...[
+                ..._serviceBreakdown.map((item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item['name']?.toString() ?? '',
+                          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '\u20B9${((item['price'] as num?) ?? 0).toStringAsFixed(0)}  (${((item['duration'] as num?) ?? 0).toStringAsFixed(0)} min)',
+                        style: AppTextStyles.bodyMedium,
+                      ),
+                    ],
+                  ),
+                )),
+                const Divider(height: 8),
+              ],
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text(locale.tr('subtotal'), style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
-                Text('\u20B9${widget.totalPrice.toStringAsFixed(0)}', style: AppTextStyles.bodyMedium),
+                Text('\u20B9${basePrice.toStringAsFixed(0)}', style: AppTextStyles.bodyMedium),
               ]),
               if (discount > 0) ...[
                 const SizedBox(height: 4),
@@ -392,9 +656,9 @@ class _BookingScreenState extends State<BookingScreen> {
         'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
         'time': _selectedTime ?? '',
         'stylist_name': _selectedStylistName ?? context.read<LocaleProvider>().tr('any_stylist'),
-        'total_price': widget.totalPrice,
+        'total_price': _effectivePrice > 0 ? _effectivePrice : widget.totalPrice,
         'service_count': widget.serviceIds.length,
-        'total_duration': widget.totalDuration,
+        'total_duration': _effectiveDuration > 0 ? _effectiveDuration : widget.totalDuration,
       });
     } catch (e) {
       setState(() => _isBooking = false);
@@ -518,7 +782,7 @@ class _BookingScreenState extends State<BookingScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 72,
+          height: 84,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: widget.members.length + 1,
@@ -554,68 +818,112 @@ class _BookingScreenState extends State<BookingScreen> {
   }) {
     final isSelected = _selectedStylistId == id;
 
+    // Check if this stylist is missing any selected service
+    final String? missingService = (!isAny && id != null)
+        ? _stylistMissingService(id)
+        : null;
+    final bool isDisabled = missingService != null;
+
+    // Get stylist-specific total price
+    final double? stylistTotal = isAny
+        ? null
+        : _getStylistTotalPrice(id);
+    final priceRange = isAny ? _getAnyStylistPriceRange() : null;
+
     return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        setState(() {
-          _selectedStylistId = id;
-          _selectedStylistName = isAny ? null : name;
-        });
-        _loadSlots();
-      },
-      child: Container(
-        width: 68,
-        margin: const EdgeInsets.only(right: 8),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: isSelected
-                    ? Border.all(color: AppColors.primary, width: 2.5)
-                    : null,
-              ),
-              padding: isSelected ? const EdgeInsets.all(2) : null,
-              child: isAny
-                  ? CircleAvatar(
-                      radius: 20,
-                      backgroundColor: AppColors.softSurface,
-                      child: Icon(
-                        Icons.groups_outlined,
-                        size: 24,
-                        color: AppColors.textSecondary,
+      onTap: isDisabled
+          ? () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Doesn't offer $missingService"),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            }
+          : () {
+              HapticFeedback.selectionClick();
+              setState(() {
+                _selectedStylistId = id;
+                _selectedStylistName = isAny ? null : name;
+              });
+              _recalculateEffectivePricing();
+              _loadSlots();
+            },
+      child: Opacity(
+        opacity: isDisabled ? 0.45 : 1.0,
+        child: Container(
+          width: 68,
+          margin: const EdgeInsets.only(right: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: isSelected
+                      ? Border.all(color: AppColors.primary, width: 2.5)
+                      : null,
+                ),
+                padding: isSelected ? const EdgeInsets.all(2) : null,
+                child: isAny
+                    ? CircleAvatar(
+                        radius: 20,
+                        backgroundColor: AppColors.softSurface,
+                        child: Icon(
+                          Icons.groups_outlined,
+                          size: 24,
+                          color: AppColors.textSecondary,
+                        ),
+                      )
+                    : CircleAvatar(
+                        radius: 20,
+                        backgroundColor: AppColors.softSurface,
+                        backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+                            ? CachedNetworkImageProvider(ApiConfig.imageUrl(photoUrl) ?? photoUrl)
+                            : null,
+                        child: photoUrl == null || photoUrl.isEmpty
+                            ? Icon(
+                                Icons.person,
+                                size: 24,
+                                color: AppColors.textSecondary,
+                              )
+                            : null,
                       ),
-                    )
-                  : CircleAvatar(
-                      radius: 20,
-                      backgroundColor: AppColors.softSurface,
-                      backgroundImage: photoUrl != null && photoUrl.isNotEmpty
-                          ? CachedNetworkImageProvider(ApiConfig.imageUrl(photoUrl) ?? photoUrl)
-                          : null,
-                      child: photoUrl == null || photoUrl.isEmpty
-                          ? Icon(
-                              Icons.person,
-                              size: 24,
-                              color: AppColors.textSecondary,
-                            )
-                          : null,
-                    ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              name,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color:
-                    isSelected ? AppColors.textPrimary : AppColors.textSecondary,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                name,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color:
+                      isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+              // Show per-stylist total price
+              if (stylistTotal != null)
+                Text(
+                  '\u20B9${stylistTotal.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                  ),
+                )
+              else if (isAny && priceRange != null && priceRange['min'] != priceRange['max'])
+                Text(
+                  '\u20B9${priceRange['min']!.toStringAsFixed(0)}-${priceRange['max']!.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -797,7 +1105,7 @@ class _BookingScreenState extends State<BookingScreen> {
               Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
               const SizedBox(width: 8),
               Text(
-                locale.tr('your_appointment_duration').replaceAll('{duration}', '${widget.totalDuration}'),
+                locale.tr('your_appointment_duration').replaceAll('{duration}', '${_effectiveDuration > 0 ? _effectiveDuration : widget.totalDuration}'),
                 style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w500),
               ),
             ],
@@ -965,10 +1273,16 @@ class _BookingScreenState extends State<BookingScreen> {
             final available = slot['available'] as bool? ?? true;
             final slotType = slot['slotType'] as String? ?? 'smart';
             final discount = (slot['discount'] as num?)?.toDouble() ?? 0;
-            final finalPrice = (slot['finalPrice'] as num?)?.toDouble() ?? widget.totalPrice;
+            final slotBasePrice = _effectivePrice > 0 ? _effectivePrice : widget.totalPrice;
+            final finalPrice = discount > 0
+                ? (slot['discountType'] == 'flat'
+                    ? slotBasePrice - ((slot['discountAmount'] as num?)?.toDouble() ?? discount)
+                    : slotBasePrice * (1 - discount / 100))
+                : slotBasePrice;
             final reason = slot['reason'] as String? ?? '';
             final isSelected = _selectedTime == time;
             final isPerfectFit = slotType == 'perfect_fit';
+            final effectiveDuration = _effectiveDuration > 0 ? _effectiveDuration : widget.totalDuration;
 
             final borderColor = isPerfectFit
                 ? const Color(0xFFF59E0B) // amber
@@ -1010,7 +1324,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           ),
                         ),
                         Text(
-                          formatSlotRange12h(time, slot['endTime'] as String?, widget.totalDuration),
+                          formatSlotRange12h(time, slot['endTime'] as String?, effectiveDuration),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -1028,7 +1342,7 @@ class _BookingScreenState extends State<BookingScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '\u20B9${widget.totalPrice.toStringAsFixed(0)}',
+                            '\u20B9${slotBasePrice.toStringAsFixed(0)}',
                             style: TextStyle(
                               fontSize: 11,
                               color: AppColors.textMuted,
@@ -1237,6 +1551,7 @@ class _BookingScreenState extends State<BookingScreen> {
   /// Check if a regular slot is within 30 min of any smart slot
   double? _lossAversionExtra(String time) {
     if (_smartSlots.isEmpty) return null;
+    final basePrice = _effectivePrice > 0 ? _effectivePrice : widget.totalPrice;
     final parts = time.split(':');
     final slotMin = (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
 
@@ -1246,14 +1561,22 @@ class _BookingScreenState extends State<BookingScreen> {
       final sParts = sTime.split(':');
       final sMin = (int.tryParse(sParts[0]) ?? 0) * 60 + (int.tryParse(sParts[1]) ?? 0);
       if ((slotMin - sMin).abs() <= 30) {
-        final fp = (smart['finalPrice'] as num?)?.toDouble() ?? widget.totalPrice;
+        final discount = (smart['discount'] as num?)?.toDouble() ?? 0;
+        double fp;
+        if (discount > 0) {
+          fp = smart['discountType'] == 'flat'
+              ? basePrice - ((smart['discountAmount'] as num?)?.toDouble() ?? discount)
+              : basePrice * (1 - discount / 100);
+        } else {
+          fp = basePrice;
+        }
         if (bestSmartPrice == null || fp < bestSmartPrice) {
           bestSmartPrice = fp;
         }
       }
     }
-    if (bestSmartPrice != null && bestSmartPrice < widget.totalPrice) {
-      return widget.totalPrice - bestSmartPrice;
+    if (bestSmartPrice != null && bestSmartPrice < basePrice) {
+      return basePrice - bestSmartPrice;
     }
     return null;
   }
@@ -1267,7 +1590,12 @@ class _BookingScreenState extends State<BookingScreen> {
     final isPerfectFit = slotType == 'perfect_fit';
     final isSpecial = isSmart || isPerfectFit;
     final discount = (slot['discount'] as num?)?.toDouble() ?? 0;
-    final finalPrice = (slot['finalPrice'] as num?)?.toDouble() ?? widget.totalPrice;
+    final slotBasePrice = _effectivePrice > 0 ? _effectivePrice : widget.totalPrice;
+    final finalPrice = discount > 0
+        ? (slot['discountType'] == 'flat'
+            ? slotBasePrice - ((slot['discountAmount'] as num?)?.toDouble() ?? discount)
+            : slotBasePrice * (1 - discount / 100))
+        : slotBasePrice;
     final reason = slot['reason'] as String? ?? '';
 
     // Nudge 3: Loss aversion for regular slots near smart slots
@@ -1336,7 +1664,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 else if (isSmart)
                   Text('\u2605 ', style: TextStyle(fontSize: 12, color: const Color(0xFF0D9488))),
                 Text(
-                  formatSlotRange12h(time, slot['endTime'] as String?, widget.totalDuration),
+                  formatSlotRange12h(time, slot['endTime'] as String?, _effectiveDuration > 0 ? _effectiveDuration : widget.totalDuration),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -1353,7 +1681,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '\u20B9${widget.totalPrice.toStringAsFixed(0)}',
+                      '\u20B9${slotBasePrice.toStringAsFixed(0)}',
                       style: TextStyle(
                         fontSize: 9,
                         color: AppColors.textMuted,
@@ -1525,23 +1853,32 @@ class _BookingScreenState extends State<BookingScreen> {
     final locale = context.watch<LocaleProvider>();
 
     // Determine if the selected slot has a smart discount
-    double displayPrice = widget.totalPrice;
+    final basePrice = _effectivePrice > 0 ? _effectivePrice : widget.totalPrice;
+    double displayPrice = basePrice;
     String? smartLabel;
     if (_selectedTime != null) {
       final match = _slots.where((s) => s['time'] == _selectedTime);
       if (match.isNotEmpty) {
         final s = match.first;
         final slotType = s['slotType'] as String?;
-        final fp = (s['finalPrice'] as num?)?.toDouble();
-        if ((slotType == 'smart' || slotType == 'perfect_fit') && fp != null && fp < widget.totalPrice) {
-          displayPrice = fp;
-          final dt = s['discountType'] as String? ?? 'percentage';
+        if (slotType == 'smart' || slotType == 'perfect_fit') {
           final disc = (s['discount'] as num?)?.toDouble() ?? 0;
+          final dt = s['discountType'] as String? ?? 'percentage';
           final discAmt = (s['discountAmount'] as num?)?.toDouble() ?? disc;
-          if (dt == 'flat') {
-            smartLabel = '${locale.tr('smart_discount')} (\u20B9${discAmt.toStringAsFixed(0)})';
-          } else {
-            smartLabel = '${locale.tr('smart_discount')} (${disc.toStringAsFixed(0)}%)';
+          // Recalculate smart discount on effective (stylist-specific) price
+          if (disc > 0) {
+            if (dt == 'flat') {
+              displayPrice = basePrice - discAmt;
+            } else {
+              displayPrice = basePrice * (1 - disc / 100);
+            }
+          }
+          if (displayPrice < basePrice) {
+            if (dt == 'flat') {
+              smartLabel = '${locale.tr('smart_discount')} (\u20B9${discAmt.toStringAsFixed(0)})';
+            } else {
+              smartLabel = '${locale.tr('smart_discount')} (${disc.toStringAsFixed(0)}%)';
+            }
           }
         }
       }
@@ -1585,7 +1922,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '\u20B9${widget.totalPrice.toStringAsFixed(0)}',
+                            '\u20B9${basePrice.toStringAsFixed(0)}',
                             style: AppTextStyles.caption.copyWith(
                               decoration: TextDecoration.lineThrough,
                               color: AppColors.textMuted,
@@ -1604,7 +1941,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       )
                     else
                       Text(
-                        '\u20B9${widget.totalPrice.toStringAsFixed(0)}',
+                        '\u20B9${basePrice.toStringAsFixed(0)}',
                         style: AppTextStyles.labelLarge,
                       ),
                   ],

@@ -176,6 +176,7 @@ class SaloonApp extends StatelessWidget {
             totalPrice: args['total_price'],
             salonName: args['salon_name'] ?? '',
             members: args['members'] ?? [],
+            services: args['services'] ?? [],
           ),
         );
 
