@@ -37,6 +37,8 @@ import 'features/salon/earnings/presentation/screens/transactions_screen.dart';
 import 'features/salon/onboarding/presentation/screens/payment_setup_screen.dart';
 import 'features/consumer/payment/presentation/screens/payment_screen.dart';
 import 'features/consumer/checkout/presentation/screens/checkout_screen.dart';
+import 'features/consumer/gallery/presentation/screens/gallery_viewer_screen.dart';
+import 'features/consumer/gallery/presentation/screens/gallery_grid_screen.dart';
 import 'features/consumer/favorites/presentation/screens/favorites_screen.dart';
 import 'features/consumer/search/presentation/screens/search_screen.dart';
 import 'features/consumer/profile/presentation/screens/edit_profile_screen.dart';
@@ -244,6 +246,26 @@ class SaloonApp extends StatelessWidget {
         return SlidePageRoute(child: const SettingsScreen());
       case '/help':
         return SlidePageRoute(child: const HelpScreen());
+
+      // Gallery routes
+      case '/gallery-viewer':
+        final args = settings.arguments as Map<String, dynamic>?;
+        if (args == null) return _notFoundRoute();
+        return SlidePageRoute(
+          child: GalleryViewerScreen(
+            images: List<String>.from(args['images'] ?? []),
+            initialIndex: (args['initialIndex'] as int?) ?? 0,
+          ),
+        );
+      case '/gallery-grid':
+        final args = settings.arguments as Map<String, dynamic>?;
+        if (args == null) return _notFoundRoute();
+        return SlidePageRoute(
+          child: GalleryGridScreen(
+            images: List<String>.from(args['images'] ?? []),
+            salonName: args['salonName'] as String? ?? 'Gallery',
+          ),
+        );
 
       // Salon owner routes
       case '/salon-home':

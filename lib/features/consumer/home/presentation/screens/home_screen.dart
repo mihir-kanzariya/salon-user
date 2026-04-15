@@ -345,6 +345,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           isFavorite: provider.isFavorited(salon.id),
                           onFavorite: () => provider.toggleFavorite(salon.id),
                           onTap: () => Navigator.pushNamed(context, '/salon-detail', arguments: salon.id),
+                          onGalleryTap: salon.gallery.isNotEmpty
+                              ? () => Navigator.pushNamed(context, '/salon-detail', arguments: salon.id)
+                              : null,
                         );
                       },
                       childCount: provider.salons.length + (provider.hasMore ? 1 : 0),

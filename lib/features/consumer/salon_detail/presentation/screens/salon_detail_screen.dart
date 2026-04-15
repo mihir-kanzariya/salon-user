@@ -15,6 +15,8 @@ import '../../../../../core/utils/service_icon_helper.dart';
 import '../../../../../services/api_service.dart';
 import '../../../../consumer/home/data/models/salon_model.dart';
 import '../../../../consumer/home/data/repositories/salon_repository.dart';
+import '../../../../consumer/gallery/presentation/screens/gallery_viewer_screen.dart';
+import '../../../../consumer/gallery/presentation/screens/gallery_grid_screen.dart';
 
 class SalonDetailScreen extends StatefulWidget {
   final String salonId;
@@ -673,35 +675,7 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
           ],
 
           // Gallery
-          if (salon.gallery.isNotEmpty) ...[
-            _buildSectionHeader(Icons.photo_library_outlined, context.watch<LocaleProvider>().tr('gallery')),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 120,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: salon.gallery.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  return ShimmerImage(
-                    imageUrl: ApiConfig.imageUrl(salon.gallery[index]) ?? salon.gallery[index],
-                    width: 120,
-                    height: 120,
-                    fit: BoxFit.cover,
-                    borderRadius: BorderRadius.circular(8),
-                    errorWidget: Container(
-                      width: 120,
-                      height: 120,
-                      color: AppColors.softSurface,
-                      child: const Icon(Icons.broken_image,
-                          color: AppColors.textMuted),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
+          ..._buildGallerySection(salon),
 
           // Our Stylists
           if (stylists.isNotEmpty) ...[
@@ -753,6 +727,105 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
         ],
       ),
     );
+  }
+
+  // ──────────────────────────────────────────────
+  // Gallery Section (About Tab)
+  // ──────────────────────────────────────────────
+  List<Widget> _buildGallerySection(SalonModel salon) {
+    final validGallery = salon.gallery.where((url) => url.isNotEmpty).toList();
+
+    if (validGallery.isEmpty) {
+      return [
+        _buildSectionHeader(Icons.photo_library_outlined, context.watch<LocaleProvider>().tr('gallery')),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          decoration: BoxDecoration(
+            color: AppColors.softSurface,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Column(
+            children: [
+              Icon(Icons.camera_alt_outlined, size: 36, color: AppColors.textMuted),
+              SizedBox(height: 8),
+              Text('No photos yet', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+      ];
+    }
+
+    return [
+      Row(
+        children: [
+          Expanded(
+            child: _buildSectionHeader(Icons.photo_library_outlined, '${context.watch<LocaleProvider>().tr('gallery')} (${validGallery.length})'),
+          ),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => GalleryGridScreen(
+                    images: validGallery,
+                    salonName: salon.name,
+                  ),
+                ),
+              );
+            },
+            child: Text(
+              'See all photos (${validGallery.length})',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      SizedBox(
+        height: 120,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: validGallery.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => GalleryViewerScreen(
+                      images: validGallery,
+                      initialIndex: index,
+                    ),
+                  ),
+                );
+              },
+              child: ShimmerImage(
+                imageUrl: ApiConfig.imageUrl(validGallery[index]) ?? validGallery[index],
+                width: 120,
+                height: 120,
+                fit: BoxFit.cover,
+                borderRadius: BorderRadius.circular(8),
+                errorWidget: Container(
+                  width: 120,
+                  height: 120,
+                  color: AppColors.softSurface,
+                  child: const Icon(Icons.broken_image, color: AppColors.textMuted),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+      const SizedBox(height: 20),
+    ];
   }
 
   // ──────────────────────────────────────────────

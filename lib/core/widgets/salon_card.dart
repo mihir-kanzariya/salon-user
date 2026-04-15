@@ -23,6 +23,7 @@ class SalonCard extends StatelessWidget {
   final int stylistCount;
   final List<String> amenities;
   final List<String> gallery;
+  final VoidCallback? onGalleryTap;
 
   const SalonCard({
     super.key,
@@ -43,6 +44,7 @@ class SalonCard extends StatelessWidget {
     this.stylistCount = 0,
     this.amenities = const [],
     this.gallery = const [],
+    this.onGalleryTap,
   });
 
   @override
@@ -171,6 +173,8 @@ class SalonCard extends StatelessWidget {
           Positioned(
             bottom: 8,
             right: 8,
+            child: GestureDetector(
+            onTap: onGalleryTap,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -212,6 +216,7 @@ class SalonCard extends StatelessWidget {
                     ),
                   ),
               ],
+            ),
             ),
           ),
       ],
