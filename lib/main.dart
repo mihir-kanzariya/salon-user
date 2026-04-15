@@ -170,13 +170,19 @@ class SaloonApp extends StatelessWidget {
         if (args == null) return _notFoundRoute();
         return SlidePageRoute(
           child: BookingScreen(
-            salonId: args['salon_id'],
-            serviceIds: List<String>.from(args['service_ids']),
-            totalDuration: args['total_duration'],
-            totalPrice: args['total_price'],
-            salonName: args['salon_name'] ?? '',
-            members: args['members'] ?? [],
-            services: args['services'] ?? [],
+            salonId: args['salon_id']?.toString() ?? '',
+            serviceIds: List<String>.from(
+              (args['service_ids'] as List?)?.map((e) => e.toString()) ?? [],
+            ),
+            totalDuration: args['total_duration'] is int
+                ? args['total_duration']
+                : int.tryParse(args['total_duration']?.toString() ?? '0') ?? 0,
+            totalPrice: args['total_price'] is double
+                ? args['total_price']
+                : double.tryParse(args['total_price']?.toString() ?? '0') ?? 0,
+            salonName: args['salon_name']?.toString() ?? '',
+            members: args['members'] as List<dynamic>? ?? [],
+            services: args['services'] as List<dynamic>? ?? [],
           ),
         );
 

@@ -116,7 +116,9 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
           _isLoadingReviews = false;
         }
         if (meta != null) {
-          _hasMoreReviews = (meta['page'] as num) < (meta['totalPages'] as num);
+          final page = (meta['page'] is num) ? (meta['page'] as num) : (num.tryParse(meta['page']?.toString() ?? '') ?? 1);
+          final totalPages = (meta['totalPages'] is num) ? (meta['totalPages'] as num) : (num.tryParse(meta['totalPages']?.toString() ?? '') ?? 1);
+          _hasMoreReviews = page < totalPages;
         } else {
           _hasMoreReviews = false;
         }
@@ -145,9 +147,9 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
     if (_salon?.services == null) return 0;
     double total = 0;
     for (final s in _salon!.services!) {
-      if (_selectedServiceIds.contains(s['id'])) {
+      if (_selectedServiceIds.contains(s['id']?.toString())) {
         total += double.tryParse(
-                (s['discounted_price'] ?? s['price']).toString()) ??
+                (s['discounted_price'] ?? s['price'])?.toString() ?? '0') ??
             0;
       }
     }
@@ -158,8 +160,10 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
   bool get _hasVariablePricing {
     if (_salon?.services == null) return false;
     for (final s in _salon!.services!) {
-      if (_selectedServiceIds.contains(s['id'])) {
-        final priceRange = s['price_range'] as Map<String, dynamic>?;
+      if (_selectedServiceIds.contains(s['id']?.toString())) {
+        final priceRange = s['price_range'] is Map
+            ? Map<String, dynamic>.from(s['price_range'] as Map)
+            : null;
         if (priceRange != null) {
           final min = double.tryParse(priceRange['min']?.toString() ?? '') ?? 0;
           final max = double.tryParse(priceRange['max']?.toString() ?? '') ?? 0;
@@ -174,8 +178,10 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
     if (_salon?.services == null) return 0;
     int total = 0;
     for (final s in _salon!.services!) {
-      if (_selectedServiceIds.contains(s['id'])) {
-        total += (s['duration_minutes'] as int?) ?? 0;
+      if (_selectedServiceIds.contains(s['id']?.toString())) {
+        total += s['duration_minutes'] is int
+            ? s['duration_minutes'] as int
+            : int.tryParse(s['duration_minutes']?.toString() ?? '0') ?? 0;
       }
     }
     return total;
@@ -448,7 +454,7 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
                         onPressed: () {
                           // Build selected services list for the booking screen
                           final selectedServices = (salon.services ?? [])
-                              .where((s) => _selectedServiceIds.contains(s['id']))
+                              .where((s) => _selectedServiceIds.contains(s['id']?.toString()))
                               .toList();
                           Navigator.pushNamed(context, '/booking', arguments: {
                             'salon_id': salon.id,
@@ -457,7 +463,7 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
                             'total_price': _totalPrice,
                             'salon_name': salon.name,
                             'members': (salon.members ?? [])
-                                .where((m) => m['role'] == 'stylist')
+                                .where((m) => m['role']?.toString() == 'stylist')
                                 .toList(),
                             'services': selectedServices,
                           });
@@ -487,24 +493,29 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
       itemCount: salon.services!.length,
       itemBuilder: (context, index) {
         final service = salon.services![index];
-        final serviceId = service['id'] as String;
+        final serviceId = service['id']?.toString() ?? '';
+        if (serviceId.isEmpty) return const SizedBox.shrink();
         final isSelected = _selectedServiceIds.contains(serviceId);
         final price = double.tryParse(
-                (service['discounted_price'] ?? service['price']).toString()) ??
+                (service['discounted_price'] ?? service['price'])?.toString() ?? '0') ??
             0;
         final originalPrice =
-            double.tryParse(service['price'].toString()) ?? 0;
+            double.tryParse(service['price']?.toString() ?? '0') ?? 0;
         final hasDiscount =
             service['discounted_price'] != null && price < originalPrice;
-        final description = (service['description'] ?? '') as String;
-        final durationMinutes = (service['duration_minutes'] as int?) ?? 0;
+        final description = (service['description'] ?? '').toString();
+        final durationMinutes = service['duration_minutes'] is int
+            ? service['duration_minutes'] as int
+            : int.tryParse(service['duration_minutes']?.toString() ?? '0') ?? 0;
         final icon = ServiceIconHelper.getIcon(
           service['category']?['name'],
           service['name'] ?? '',
         );
 
         // Stylist-specific pricing: check for price_range and stylist_count
-        final priceRange = service['price_range'] as Map<String, dynamic>?;
+        final priceRange = service['price_range'] is Map
+            ? Map<String, dynamic>.from(service['price_range'] as Map)
+            : null;
         final minPrice = priceRange != null
             ? (double.tryParse(priceRange['min']?.toString() ?? '') ?? price)
             : price;
@@ -512,7 +523,9 @@ class _SalonDetailScreenState extends State<SalonDetailScreen>
             ? (double.tryParse(priceRange['max']?.toString() ?? '') ?? price)
             : price;
         final hasPriceRange = priceRange != null && minPrice != maxPrice;
-        final stylistCount = (service['stylist_count'] as int?) ?? 0;
+        final stylistCount = service['stylist_count'] is int
+            ? service['stylist_count'] as int
+            : int.tryParse(service['stylist_count']?.toString() ?? '0') ?? 0;
 
         return GestureDetector(
           onTap: () => _toggleService(serviceId),

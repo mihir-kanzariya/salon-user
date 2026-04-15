@@ -152,9 +152,11 @@ class _BookingScreenState extends State<BookingScreen> {
         if (service is Map<String, dynamic>) {
           final price = double.tryParse(
               (service['discounted_price'] ?? service['price'])?.toString() ?? '0') ?? 0;
-          final duration = (service['duration_minutes'] as int?) ?? 0;
+          final duration = service['duration_minutes'] is int
+              ? service['duration_minutes'] as int
+              : int.tryParse(service['duration_minutes']?.toString() ?? '0') ?? 0;
           breakdown.add({
-            'name': service['name'] ?? '',
+            'name': service['name']?.toString() ?? '',
             'price': price,
             'duration': duration,
           });
@@ -177,18 +179,20 @@ class _BookingScreenState extends State<BookingScreen> {
       final stylistList = _stylistServicePricing[serviceId];
       if (stylistList == null) {
         // Fall back to widget.services for this service
-        final widgetService = widget.services.firstWhere(
-          (s) => s is Map<String, dynamic> && s['id'] == serviceId,
+        final widgetService = widget.services.cast<dynamic>().firstWhere(
+          (s) => s is Map<String, dynamic> && s['id']?.toString() == serviceId,
           orElse: () => null,
         );
         if (widgetService is Map<String, dynamic>) {
           final price = double.tryParse(
               (widgetService['discounted_price'] ?? widgetService['price'])?.toString() ?? '0') ?? 0;
-          final duration = (widgetService['duration_minutes'] as int?) ?? 0;
+          final duration = widgetService['duration_minutes'] is int
+              ? widgetService['duration_minutes'] as int
+              : int.tryParse(widgetService['duration_minutes']?.toString() ?? '0') ?? 0;
           totalPrice += price;
           totalDuration += duration;
           breakdown.add({
-            'name': widgetService['name'] ?? '',
+            'name': widgetService['name']?.toString() ?? '',
             'price': price,
             'duration': duration,
           });
@@ -202,8 +206,8 @@ class _BookingScreenState extends State<BookingScreen> {
       if (match.isNotEmpty) {
         hasStylistData = true;
         final stylistData = match.first;
-        final price = (stylistData['price'] as num?)?.toDouble() ?? 0;
-        final duration = (stylistData['duration_minutes'] as num?)?.toInt() ?? 0;
+        final price = double.tryParse(stylistData['price']?.toString() ?? '0') ?? 0;
+        final duration = int.tryParse(stylistData['duration_minutes']?.toString() ?? '0') ?? 0;
         final serviceName = stylistData['service_name']?.toString() ?? '';
         totalPrice += price;
         totalDuration += duration;
@@ -214,18 +218,20 @@ class _BookingScreenState extends State<BookingScreen> {
         });
       } else {
         // Stylist doesn't offer this service — fall back to base price
-        final widgetService = widget.services.firstWhere(
-          (s) => s is Map<String, dynamic> && s['id'] == serviceId,
+        final widgetService = widget.services.cast<dynamic>().firstWhere(
+          (s) => s is Map<String, dynamic> && s['id']?.toString() == serviceId,
           orElse: () => null,
         );
         if (widgetService is Map<String, dynamic>) {
           final price = double.tryParse(
               (widgetService['discounted_price'] ?? widgetService['price'])?.toString() ?? '0') ?? 0;
-          final duration = (widgetService['duration_minutes'] as int?) ?? 0;
+          final duration = widgetService['duration_minutes'] is int
+              ? widgetService['duration_minutes'] as int
+              : int.tryParse(widgetService['duration_minutes']?.toString() ?? '0') ?? 0;
           totalPrice += price;
           totalDuration += duration;
           breakdown.add({
-            'name': widgetService['name'] ?? '',
+            'name': widgetService['name']?.toString() ?? '',
             'price': price,
             'duration': duration,
           });
@@ -267,7 +273,7 @@ class _BookingScreenState extends State<BookingScreen> {
           s['member_id']?.toString() == stylistId).toList();
       if (match.isNotEmpty) {
         hasData = true;
-        total += (match.first['price'] as num?)?.toDouble() ?? 0;
+        total += double.tryParse(match.first['price']?.toString() ?? '0') ?? 0;
       }
     }
     return hasData ? total : null;
@@ -284,7 +290,7 @@ class _BookingScreenState extends State<BookingScreen> {
       if (stylistList == null) continue;
       for (final entry in stylistList) {
         final id = entry['member_id']?.toString() ?? '';
-        final price = (entry['price'] as num?)?.toDouble() ?? 0;
+        final price = double.tryParse(entry['price']?.toString() ?? '0') ?? 0;
         stylistTotals[id] = (stylistTotals[id] ?? 0) + price;
       }
     }
@@ -326,7 +332,9 @@ class _BookingScreenState extends State<BookingScreen> {
       }
 
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final duration = _effectiveDuration > 0 ? _effectiveDuration : widget.totalDuration;
+      final duration = _effectiveDuration > 0
+          ? _effectiveDuration
+          : (widget.totalDuration > 0 ? widget.totalDuration : 30);
       final price = _effectivePrice > 0 ? _effectivePrice : widget.totalPrice;
 
       // Try smart-slots API first; fall back to regular slots on failure
@@ -795,8 +803,12 @@ class _BookingScreenState extends State<BookingScreen> {
                   isAny: true,
                 );
               }
-              final member = widget.members[index - 1] as Map<String, dynamic>;
-              final memberUser = member['user'] as Map<String, dynamic>?;
+              final rawMember = widget.members[index - 1];
+              if (rawMember is! Map) return const SizedBox.shrink();
+              final member = Map<String, dynamic>.from(rawMember);
+              final memberUser = member['user'] is Map
+                  ? Map<String, dynamic>.from(member['user'] as Map)
+                  : null;
               return _buildStylistItem(
                 id: member['id']?.toString() ?? member['_id']?.toString(),
                 name: (memberUser?['name'] ?? member['name'])?.toString() ?? 'Stylist',
